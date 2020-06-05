@@ -1,0 +1,18 @@
+version: 2
+firmware: 3.60
+modules:
+  ScePaf:
+    nid: 0xCD679177
+    libraries:
+      ScePafMisc:
+        kernel: false
+        nid: 0x3D643CE8
+        functions:
+          scePafHeapInit: 0xA2B0BF4D
+          scePafHeapFini: 0x25238A3A
+          scePafMallocWithInfo: 0x89A1CE78
+      ScePafStdc:
+        kernel: false
+        nid: 0xA7D28DAE
+        functions:
+          scePafFree: 0x347AFDD9
