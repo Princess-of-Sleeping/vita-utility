@@ -95,7 +95,7 @@ int ksceVfsMount(const SceVfsMount *pVfsMount);
 int ksceVfsUnmount(const SceVfsUmount *pVfsUmount);
 
 int ksceVfsAddVfs(SceVfsAdd *pVfsAdd);
-int ksceVfsDeleteVfs(const char *fs); // "deci4p_drfp_dev_fs"
+int ksceVfsDeleteVfs(const char *fs, void *a2); // "deci4p_drfp_dev_fs"
 
 const SceVfsMount2 vfs_mount2 = {
 	.unit      = "host0:",
@@ -371,7 +371,7 @@ int module_start(SceSize args, void *argp){
 
 	ksceVfsUnmount(&vfs_umount);
 
-	ksceVfsDeleteVfs("bsod_dummy_host_fs");
+	ksceVfsDeleteVfs("bsod_dummy_host_fs", NULL);
 
 	vfs_add.func_ptr1 = &vfs_table;
 	vfs_add.device    = "faps_dummy_host_fs";
