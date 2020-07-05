@@ -23,6 +23,8 @@ add_executable(SceVfsMountPoC
 target_link_libraries(SceVfsMountPoC
   SceDebugForDriver_stub
   SceIofilemgrForDriver_stub
+  SceSysclibForDriver_stub
+  SceSblSsMgrForDriver_stub
 )
 
 set_target_properties(SceVfsMountPoC
