@@ -11,3 +11,7 @@ Malloc with custom memory base
 for kernel
 
 Since SceVfsMountPoC is a PoC, there is nothing that guarantees its operation.
+
+# Special thanks:
+
+HENkaku wiki
