@@ -8,6 +8,10 @@
 
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>
+#include <psp2kern/io/dirent.h>
+#include <string.h>
+#include <stdio.h>
+#include "vfs.h"
 
 typedef struct SceVfsMount2 { // size is 0x14
 	const char *unit;     // ex:"host0:"
@@ -84,7 +88,7 @@ typedef struct SceVfsTable2 { // size is 0x74?
 typedef struct SceVfsAdd {     // size is 0x1C
 	const SceVfsTable *func_ptr1;
 	const char *device;    // ex:"bsod_dummy_host_fs"
-	int data_0x08;
+	int data_0x08;         // ex:0x11
 	int data_0x0C;
 	int data_0x10;         // ex:0x10
 	const SceVfsTable2 *func_ptr2;
@@ -96,6 +100,8 @@ int ksceVfsUnmount(const SceVfsUmount *pVfsUmount);
 
 int ksceVfsAddVfs(SceVfsAdd *pVfsAdd);
 int ksceVfsDeleteVfs(const char *fs, void *a2); // "deci4p_drfp_dev_fs"
+
+int ksceKernelGetRandomNumber(void *dst, SceSize size);
 
 const SceVfsMount2 vfs_mount2 = {
 	.unit      = "host0:",
@@ -168,7 +174,7 @@ int sub_81001E32(void *a1){
 	return 0x80010086;
 }
 
-typedef struct SceVfsPathElem {     // size is 0x1C
+typedef struct SceVfsPathElem { // size is 0x1C
 	void *data_0x00;
 	char *path;
 	void *data_0x08;
@@ -179,22 +185,20 @@ typedef struct SceVfsPathElem {     // size is 0x1C
 } SceVfsPathElem;
 
 // call from ksceVfsOpDecodePathElem
-
 int sub_8100222C(SceVfsPathElem *a1){
-
-	void *lr;
-	__asm__ volatile ("mov %0, lr" : "=r" (lr));
-
-	ksceDebugPrintf("sub_8100222C:0x%X\n", lr);
-	sub_81002110(a1->path);
-
 	return 0;
 }
 
-int sub_8100221A(void *a1){
-	ksceDebugPrintf("sub_8100221A\n");
+SceSize file_size = 0;
+
+// call from sceVopOpen, a1 size is 0x10(sceVopOpen four args)
+int vop_open(void *a1){
+
 	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 4)));
-	return 0x80010086;
+
+	file_size = 0x100;
+
+	return 0;
 }
 
 int sub_81001E42(void *a1){
@@ -202,24 +206,84 @@ int sub_81001E42(void *a1){
 	return 0x80010086;
 }
 
-int sub_81001E4A(void *a1){
-	ksceDebugPrintf("sub_81001E4A\n");
-	return 0x80010086;
+typedef struct SceVfsClose { // size is 0x8
+	void *data_0x00;
+	void *data_0x04;
+} SceVfsClose;
+
+// call from sceVopClose
+int vop_close(SceVfsClose *a1){
+	file_size = 0;
+	return 0;
 }
 
-/*
- * io_get_stat?
- */
-int sub_81001E3A(void *a1){
-	ksceDebugPrintf("sub_81001E3A\n");
-	return 0x80010086;
+// call from SceIofilemgrForDriver_A5A6A55C(sceVfsNodeInitializePartition), a1 size is 0x10
+int vfs_part_init(SceVfsNodePartInitArgs *a1){
+
+	int res;
+	SceVfsNode *pNode = NULL;
+	const char *path;
+
+	path = *(const char **)(a1->opt + 8);
+
+	ksceDebugPrintf("%s\n", path);
+
+	if((a1->flags & 3) != 1)
+		return 0x80010016;
+
+	if(a1->node->mount == NULL)
+		return 0x80010016;
+
+	res = ksceVfsGetNewNode(a1->node->mount, *(uint32_t *)(*(uint32_t *)(a1->node->mount + 0x5C) + 0x14), 0, &pNode);
+	if(res < 0){
+		ksceDebugPrintf("sceVfsGetNewNode : 0x%X\n", res);
+		return res;
+	}
+
+	if(pNode == NULL)
+		return 0x80010016;
+
+	ksceVfsNodeWaitEventFlag(pNode);
+
+	pNode->dev_info  = NULL;
+	pNode->mount     = a1->node->mount;
+	pNode->prev_node = a1->node;
+	pNode->unk_74    = 1;
+	pNode->unk_78    = 0x2010;
+
+	*a1->new_node = pNode;
+
+	return 0;
 }
 
-int sub_81001E52(void *a1){
-	ksceDebugPrintf("sub_81001E52\n");
-	return 0x80010086;
+typedef struct SceVfsRead { // size is 0x14
+	int data_0x00;
+	int data_0x04;
+	void *data;
+	SceSize size;
+	int data_0x10;
+} SceVfsRead;
+
+// call from sceVopRead
+int vop_read(SceVfsRead *a1){
+
+	int res;
+
+	if(a1->size >= file_size){
+		res = file_size;
+		file_size = 0;
+	}else{
+		res = a1->size;
+		file_size -= a1->size;
+	}
+
+	if(res != 0)
+		ksceKernelGetRandomNumber(a1->data, res);
+
+	return res;
 }
 
+// call from sceVopWrite
 int sub_81001E5A(void *a1){
 	ksceDebugPrintf("sub_81001E5A\n");
 	return 0x80010086;
@@ -251,28 +315,103 @@ int sub_810021E4(void *a1){
 	return 0x80010086;
 }
 
-int sub_810021D2(void *a1){
-	ksceDebugPrintf("sub_810021D2\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 4)));
+int dopen_flags = -1;
+
+// call from sceVopDopen, a1 size is 0xC(sceVopDopen three args)
+int vop_dopen(void *a1){
+
+	const char *path;
+
+	path = **(const char ***)(a1 + 4);
+
+	if(strcmp(path, "host/.") == 0){
+		dopen_flags = 1;
+		return 0;
+	}
+
 	return 0x80010086;
 }
 
-int sub_810020D8(void *a1){
-	ksceDebugPrintf("sub_810020D8\n");
+// call from sceVopDclose, a1 size is 0x8(sceVopDclose two args)
+int vop_dclose(void *a1){
+
+	dopen_flags = -1;
+
 	return 0x80010086;
 }
 
-int sub_810020E0(void *a1){
-	ksceDebugPrintf("sub_810020E0\n");
+typedef struct SceVfsVopDread { // size is 0xC
+	void *vfs_node;
+	void *data_0x04;
+	SceIoDirent *dir;
+} SceVfsVopDread;
+
+// call from sceVopDread, a1 size is 0xC(sceVopDread three args)
+int vop_dread(SceVfsVopDread *argp){
+
+	if(dopen_flags > 0){
+
+		dopen_flags--;
+
+		argp->dir->d_stat.st_mode = SCE_S_IFREG | SCE_S_IROTH | SCE_S_IRUSR | SCE_S_IWUSR;
+		argp->dir->d_stat.st_attr = SCE_SO_IFREG;
+		argp->dir->d_stat.st_size = 0x100LL;
+
+		argp->dir->d_stat.st_ctime.year        = 2020;
+		argp->dir->d_stat.st_ctime.month       = 7;
+		argp->dir->d_stat.st_ctime.day         = 5;
+		argp->dir->d_stat.st_ctime.hour        = 1;
+		argp->dir->d_stat.st_ctime.minute      = 33;
+		argp->dir->d_stat.st_ctime.second      = 0;
+		argp->dir->d_stat.st_ctime.microsecond = 0;
+
+		memcpy(&argp->dir->d_stat.st_atime, &argp->dir->d_stat.st_ctime, sizeof(SceDateTime));
+		memcpy(&argp->dir->d_stat.st_mtime, &argp->dir->d_stat.st_ctime, sizeof(SceDateTime));
+
+		snprintf(argp->dir->d_name, 255, "file%d", dopen_flags);
+		argp->dir->d_private = NULL;
+		argp->dir->dummy = 0;
+
+		return 1;
+	}else if(dopen_flags == 0)
+		return 0;
+
 	return 0x80010086;
 }
 
-/*
- * io_dopen?
- */
-int sub_810021C0(void *a1){
-	ksceDebugPrintf("sub_810021C0\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 4)));
+typedef struct SceVfsVopStat { // size is 0xC
+	int data_0x00;
+	void *data_0x04;
+	SceIoStat *stat;
+} SceVfsVopStat;
+
+// call from sceVopGetstat, a1 size is 0xC(sceVopGetstat three args)
+int vop_get_stat(SceVfsVopStat *vop_stat){
+
+	const char *path;
+
+	path = (const char *)*(uint32_t *)(vop_stat->data_0x04);
+
+	if(strcmp(path, "host/.") == 0){
+		vop_stat->stat->st_mode = SCE_S_IFDIR | SCE_S_IROTH | SCE_S_IRUSR | SCE_S_IWUSR;
+		vop_stat->stat->st_attr = SCE_SO_IFDIR;
+		vop_stat->stat->st_attr = 0;
+		vop_stat->stat->st_size = 0xFFFFFFFFFFFFFFFFLL;
+
+		vop_stat->stat->st_ctime.year        = 2020;
+		vop_stat->stat->st_ctime.month       = 7;
+		vop_stat->stat->st_ctime.day         = 5;
+		vop_stat->stat->st_ctime.hour        = 1;
+		vop_stat->stat->st_ctime.minute      = 33;
+		vop_stat->stat->st_ctime.second      = 0;
+		vop_stat->stat->st_ctime.microsecond = 0;
+
+		memcpy(&vop_stat->stat->st_atime, &vop_stat->stat->st_ctime, sizeof(SceDateTime));
+		memcpy(&vop_stat->stat->st_mtime, &vop_stat->stat->st_ctime, sizeof(SceDateTime));
+
+		return 0;
+	}
+
 	return 0x80010086;
 }
 
@@ -335,21 +474,21 @@ const SceVfsTable vfs_table = {
 };
 
 const SceVfsTable2 vfs_table2 = {
-	.func00 = sub_8100221A,
+	.func00 = vop_open,
 	.func04 = sub_81001E42,
-	.func08 = sub_81001E4A,
-	.func0C = sub_81001E3A,
-	.func10 = sub_81001E52,
+	.func08 = vop_close,
+	.func0C = vfs_part_init,
+	.func10 = vop_read,
 	.func14 = sub_81001E5A,
 	.func18 = sub_810020C8,
 	.func1C = NULL,
 	.func20 = sub_81002208,
 	.func24 = sub_810021F6,
 	.func28 = sub_810021E4,
-	.func2C = sub_810021D2,
-	.func30 = sub_810020D8,
-	.func34 = sub_810020E0,
-	.func38 = sub_810021C0,
+	.func2C = vop_dopen,
+	.func30 = vop_dclose,
+	.func34 = vop_dread,
+	.func38 = vop_get_stat,
 	.func3C = sub_810021AE,
 	.func40 = sub_8100219C,
 	.func44 = NULL,
