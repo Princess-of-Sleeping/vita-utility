@@ -22,6 +22,14 @@ host0:file0 will get random data each time it is read.
 
 __Since SceVfsMountPoC is a PoC, there is nothing that guarantees its operation.__
 
+### KernelCustomMalloc
+
+for kernel
+
+Malloc with custom memory base
+
+Basically the same as sceKernelAllocHeapMemory
+
 # Special thanks:
 
 HENkaku wiki
