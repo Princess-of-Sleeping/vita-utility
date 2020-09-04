@@ -30,6 +30,12 @@ Malloc with custom memory base
 
 Basically the same as sceKernelAllocHeapMemory
 
+### CpuWaitCore3
+
+for kernel
+
+All cores wait for core3
+
 # Special thanks:
 
 HENkaku wiki
