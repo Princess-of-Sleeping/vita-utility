@@ -30,11 +30,11 @@ Malloc with custom memory base
 
 Basically the same as sceKernelAllocHeapMemory
 
-### CpuWaitCore3
+### CpuCoreSync
 
 for kernel
 
-All cores wait for core3
+Synchronize all cores and wait for synchronization to occur
 
 # Special thanks:
 
