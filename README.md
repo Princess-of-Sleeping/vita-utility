@@ -16,11 +16,13 @@ Malloc with custom memory base
 
 for kernel
 
-Create host0 as a virtual device and create host0:file0.
+Create host0 as a virtual device.
 
-host0:file0 will get random data each time it is read.
+The files that exist in "host0:kernel_modules/" and "host0:sysroot/" are RW.
 
 __Since SceVfsMountPoC is a PoC, there is nothing that guarantees its operation.__
+
+TODO : update createFileEntry and vfs_get_stat
 
 ### KernelCustomMalloc
 
