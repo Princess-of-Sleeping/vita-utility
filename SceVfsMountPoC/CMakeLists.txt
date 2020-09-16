@@ -18,13 +18,25 @@ enable_language(C ASM)
 
 add_executable(SceVfsMountPoC
   src/main.c
+  src/cpu.S
+  src/sce_cpu.c
+  src/item_mgr.c
+  src/fs_mgr.c
+  src/module_kernel.c
+  src/sysroot_kblparam.c
+  src/etc.c
 )
 
 target_link_libraries(SceVfsMountPoC
+  SceCpuForDriver_stub
   SceDebugForDriver_stub
   SceIofilemgrForDriver_stub
   SceSysclibForDriver_stub
   SceSblSsMgrForDriver_stub
+  SceSysmemForDriver_stub
+  SceModulemgrForDriver_stub
+  SceSysrootForKernel_stub
+  taihenModuleUtils_stub
 )
 
 set_target_properties(SceVfsMountPoC

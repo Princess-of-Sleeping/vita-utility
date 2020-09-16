@@ -2,7 +2,7 @@ SceVfsMountPoC:
   attributes: 0
   version:
     major: 0x1
-    minor: 0x0
+    minor: 0x1
   main:
     start: module_start
     stop: module_stop

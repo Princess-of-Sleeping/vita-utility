@@ -1,6 +1,15 @@
+/*
+ * SceVfs mount PoC
+ * Copyright (C) 2020 Princess of Sleeping
+ *
+ * This software may be modified and distributed under the terms
+ * of the MIT license.  See the LICENSE file for details.
+ */
 
 #ifndef _PSP2_KERNEL_VFS_H_
 #define _PSP2_KERNEL_VFS_H_
+
+#include <psp2kern/io/dirent.h>
 
 typedef struct SceVfsNode { //size is 0x100
 	uint32_t unk_0;
@@ -58,14 +67,87 @@ typedef struct SceVfsNode { //size is 0x100
 	uint8_t data3[0x2C];
 } SceVfsNode;
 
-typedef struct SceVfsNodePartInitArgs {
+int ksceVfsGetNewNode(void *mount, int a2, int a3, SceVfsNode **ppNode);
+int ksceVfsNodeWaitEventFlag(SceVfsNode *pNode);
+
+typedef struct SceVfsPath { //size is 0xC
+	char *path;
+	SceSize path_len;
+	char *path2;
+} SceVfsPath;
+
+typedef struct SceVfsPartInit {
 	SceVfsNode  *node; 
 	SceVfsNode **new_node; // result
 	void *opt;
 	uint32_t flags; 
-} SceVfsNodePartInitArgs;
+} SceVfsPartInit;
 
-int ksceVfsGetNewNode(void *mount, int a2, int a3, SceVfsNode **ppNode);
-int ksceVfsNodeWaitEventFlag(SceVfsNode *pNode);
+typedef struct SceVfsDevctl {
+	void *unk_0x00;
+	const char *dev;
+	unsigned int cmd;
+	void *indata;
+	SceSize inlen;
+	void *outdata;
+	SceSize outlen;
+} SceVfsDevctl;
+
+typedef struct SceVfsOpen {
+	SceVfsNode *node;
+	SceVfsPath *path_info;
+	int flags;
+	void *opt;
+	int unk_0x10;
+} SceVfsOpen;
+
+typedef struct SceVfsClose {
+	SceVfsNode *node;
+	void *objectBase;
+} SceVfsClose;
+
+typedef struct SceVfsRead { // size is 0x14?
+	SceVfsNode *node;
+	int data_0x04;
+	void *data;
+	SceSize size;
+	int data_0x10; // ???
+} SceVfsRead;
+
+typedef struct SceVfsWrite {
+	SceVfsNode *node;
+	void *objectBase;
+	const void *data;
+	SceSize size;
+} SceVfsWrite;
+
+typedef struct SceVfsDopen {
+	SceVfsNode *node;
+	SceVfsPath *opts;
+	void *objectBase;
+} SceVfsDopen;
+
+typedef struct SceVfsDclose {
+	SceVfsNode *node;
+	void *objectBase;
+} SceVfsDclose;
+
+typedef struct SceVfsDread { // size is 0xC
+	SceVfsNode *vfs_node;
+	void *data_0x04;
+	SceIoDirent *dir;
+} SceVfsDread;
+
+typedef struct SceVfsStat {
+	SceVfsNode *node;
+	SceVfsPath *opts;
+	SceIoStat *stat;
+} SceVfsStat;
+
+typedef struct SceVfsStatByFd {
+	SceVfsNode *node;
+	void *objectBase;
+	SceIoStat *stat;
+} SceVfsStatByFd;
 
 #endif // _PSP2_KERNEL_VFS_H_

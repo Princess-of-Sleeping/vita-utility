@@ -8,10 +8,19 @@
 
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>
+#include <psp2kern/kernel/cpu.h>
+#include <psp2kern/io/devctl.h>
 #include <psp2kern/io/dirent.h>
+#include <psp2kern/io/fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include "vfs.h"
+#include "sce_cpu.h"
+#include "fs_mgr.h"
+#include "item_mgr.h"
+#include "module_kernel.h"
+#include "sysroot_kblparam.h"
+#include "etc.h"
 
 typedef struct SceVfsMount2 { // size is 0x14
 	const char *unit;     // ex:"host0:"
@@ -101,8 +110,6 @@ int ksceVfsUnmount(const SceVfsUmount *pVfsUmount);
 int ksceVfsAddVfs(SceVfsAdd *pVfsAdd);
 int ksceVfsDeleteVfs(const char *fs, void *a2); // "deci4p_drfp_dev_fs"
 
-int ksceKernelGetRandomNumber(void *dst, SceSize size);
-
 const SceVfsMount2 vfs_mount2 = {
 	.unit      = "host0:",
 	.device1   = "faps_dummy_host_fs",
@@ -129,74 +136,169 @@ const SceVfsUmount vfs_umount = {
 
 SceVfsAdd vfs_add;
 
-void sub_81002110(const char *path){
-	ksceDebugPrintf("%s\n", path);
-}
+SceUID heap_uid;
+void *root_node;
 
-int sub_81001DEC(void *a1){
+SceUID (* sceKernelCreateUidObj)(SceClass *cls, const char *name, SceCreateUidObjOpt *opt, SceObjectBase **obj);
 
-	*(uint32_t *)(*(uint32_t *)(a1) + 0x68) = 0x80;
-	*(uint32_t *)(*(uint32_t *)(a1) + 0xC0) = 0x10000;
+int (* sceKernelGetModuleList)(SceUID pid, int flags1, int flags2, SceUID *modids, size_t *num);
+int (* sceKernelGetModuleInfo)(SceUID pid, SceUID modid, SceKernelModuleInfo *info);
+
+#define GetExport(modname, lib_nid, func_nid, func) module_get_export_func(0x10005, modname, lib_nid, func_nid, (uintptr_t *)func)
+
+int module_get_export_func(SceUID pid, const char *modname, uint32_t libnid, uint32_t funcnid, uintptr_t *func);
+
+/**
+ * @j 実行許可がない @ej
+ * @e Operation is not permitted @ee
+ */
+#define SCE_ERROR_ERRNO_EPERM					-2147418111	/* 0x80010001 */
+
+/**
+ * @j ファイルがない @ej
+ * @e Associated file or directory does not exist @ee
+ */
+#define SCE_ERROR_ERRNO_ENOENT					-2147418110	/* 0x80010002 */
+
+int sub_81000008(void *a1){
+
+	if(a1 == NULL)
+		return 0x80010016;
+
+	if(*(void **)(a1) == NULL)
+		return 0x80010016;
+
+	*(uint32_t *)(*(void **)(a1) + 0x68) = 0x80;
+	*(uint32_t *)(*(void **)(a1) + 0xC0) = 0x10000;
 
 	return 0;
 }
 
-int sub_81001DFE(void *a1){
+int sub_81000020(void *a1){
 	return 0;
 }
 
-int sub_81001E02(void *a1){
+int sub_81000024(void *a1){
 
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x48) = *(uint32_t *)(*(uint32_t *)(a1) + 0xC4);
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x4C) = *(uint32_t *)(a1);
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x50) = 0;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x60) = 0;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x64) = 0;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x74) = 1;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x78) = 0x1002;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x80) = 0;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x84) = 0;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x88) = 0;
-	*(uint32_t *)(*(uint32_t *)(a1 + 8) + 0x8C) = 0;
+	ksceDebugPrintf("sub_81000024\n");
+
+	if(a1 == NULL)
+		return 0x80010016;
+
+	if(*(void **)(a1) == NULL)
+		return 0x80010016;
+
+	root_node = *(void **)(a1 + 8);
+
+	DataPackForSystem_t *pDataPackForSystem;
+
+	create_file_item(root_node, &pDataPackForSystem);
+
+	pDataPackForSystem->data.dir_entry_root = NULL;
+	pDataPackForSystem->data.dir_entry      = NULL;
+	pDataPackForSystem->data.seek           = 0x0LL;
+	pDataPackForSystem->data.size           = 0x0LL;
+
+	init_module_kernel();
+	init_sysroot();
+	init_etc();
+
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x48) = *(uint32_t *)(*(uint32_t *)(a1) + 0xC4);
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x4C) = *(uint32_t *)(a1);
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x50) = 0;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x60) = 0;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x64) = 0;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x74) = 1;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x78) = 0x1002;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x80) = 0;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x84) = 0;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x88) = 0;
+	*(uint32_t *)(*(void **)(a1 + 8) + 0x8C) = 0;
 
 	return 0;
 }
 
-int sub_81001E2E(void *a1){
+int sub_81000000(){
 	return 0;
 }
 
-int sub_81001DE8(void *a1){
+int sub_81000004(){
 	return 0;
 }
 
-int sub_81001E32(void *a1){
-	return 0x80010086;
+int vfs_devctl(SceVfsDevctl *args){
+
+	if(strcmp(args->dev, "host0:") != 0)
+		return -1;
+
+	if(args->cmd == 0x3001 && args->outlen == sizeof(SceIoDevInfo)){
+
+		((SceIoDevInfo *)args->outdata)->max_size  = 0xFFFFFFFFFFFFFFFF;
+		((SceIoDevInfo *)args->outdata)->free_size = 0x123456789ABCDEF0; // used space
+		((SceIoDevInfo *)args->outdata)->cluster_size = 0;
+		((SceIoDevInfo *)args->outdata)->unk = NULL;
+
+		return 0;
+	}
+
+	return -1;
 }
 
-typedef struct SceVfsPathElem { // size is 0x1C
-	void *data_0x00;
-	char *path;
-	void *data_0x08;
-	void *data_0x0C;
-	void *data_0x10;
-	int data_0x14;
-	void *data_0x18;
-} SceVfsPathElem;
+const SceVfsTable vfs_table_2 = {
+	.func00 = sub_81000008,
+	.func04 = sub_81000020,
+	.func08 = sub_81000024,
+	.func0C = NULL,
+	.func10 = NULL,
+	.func14 = NULL,
+	.func18 = NULL,
+	.func1C = NULL,
+	.func20 = sub_81000000,
+	.func24 = sub_81000004,
+	.func28 = NULL,
+	.func2C = vfs_devctl,
+	.func30 = NULL  // PathElme
+};
 
-// call from ksceVfsOpDecodePathElem
-int sub_8100222C(SceVfsPathElem *a1){
-	return 0;
-}
+int vfs_open(SceVfsOpen *args){
+/*
+	ksceDebugPrintf("vfs_open\n");
+	ksceDebugPrintf("path  : %s\n", args->path_info->path);
+	ksceDebugPrintf("prev_node : 0x%X\n", args->node->prev_node);
+	ksceDebugPrintf("node  : 0x%X\n", args->node);
+	ksceDebugPrintf("flags : 0x%X\n", args->flags);
+*/
+	DataPack_t *pDataPack = getFileEntryByNode(args->node->prev_node);
+	if(pDataPack == NULL)
+		return -1;
 
-SceSize file_size = 0;
+	FileEntry *pDirEntry;
+	int res;
 
-// call from sceVopOpen, a1 size is 0x10(sceVopOpen four args)
-int vop_open(void *a1){
+	res = getFileEntry(args->path_info->path, &pDirEntry);
+	if(res < 0)
+		return SCE_ERROR_ERRNO_ENOENT;
 
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 4)));
+	if((args->flags & ~pDirEntry->open_allow_flags) != 0){
 
-	file_size = 0x100;
+		ksceDebugPrintf("Has flags that are not allowed in open\n");
+		ksceDebugPrintf("flags          : 0x%08X\n", args->flags);
+		ksceDebugPrintf("flags(illegal) : 0x%08X\n", (args->flags & ~pDirEntry->open_allow_flags));
+
+		return SCE_ERROR_ERRNO_EPERM;
+	}
+
+	DataPackForSystem_t *pDataPackForSystem;
+
+	create_file_item(args->node, &pDataPackForSystem);
+
+	pDataPackForSystem->data.dir_entry_root = NULL;
+	pDataPackForSystem->data.dir_entry      = pDirEntry;
+	pDataPackForSystem->data.seek           = 0x0LL;
+	pDataPackForSystem->data.size           = pDirEntry->size;
+
+	if(pDirEntry->open_cb != NULL)
+		pDirEntry->open_cb(&pDataPackForSystem->data, pDirEntry->args_for_stat);
 
 	return 0;
 }
@@ -206,31 +308,186 @@ int sub_81001E42(void *a1){
 	return 0x80010086;
 }
 
-typedef struct SceVfsClose { // size is 0x8
-	void *data_0x00;
-	void *data_0x04;
-} SceVfsClose;
+int vfs_close(SceVfsClose *args){
 
-// call from sceVopClose
-int vop_close(SceVfsClose *a1){
-	file_size = 0;
+	DataPack_t *pDataPack = getFileEntryByNode(args->node);
+	if(pDataPack == NULL)
+		return -1;
+
+	return ksceKernelDeleteUid(pDataPack->uid);
+}
+
+int vfs_read(SceVfsRead *args){
+
+	DataPack_t *pDataPack = getFileEntryByNode(args->node);
+	if(pDataPack == NULL)
+		return -1;
+
+	if(pDataPack->dir_entry->read_cb == NULL)
+		return -1;
+
+	return pDataPack->dir_entry->read_cb(pDataPack, pDataPack->dir_entry->args_for_stat, args->data, args->size);
+}
+
+int vfs_write(SceVfsWrite *args){
+
+	DataPack_t *pDataPack = getFileEntryByNode(args->node);
+	if(pDataPack == NULL)
+		return -1;
+
+	if(pDataPack->dir_entry->write_cb == NULL)
+		return -1;
+
+	return pDataPack->dir_entry->write_cb(pDataPack, pDataPack->dir_entry->args_for_stat, args->data, args->size);
+}
+
+int sub_8100006C(){
+	ksceDebugPrintf("sub_8100006C\n");
 	return 0;
 }
 
-// call from SceIofilemgrForDriver_A5A6A55C(sceVfsNodeInitializePartition), a1 size is 0x10
-int vfs_part_init(SceVfsNodePartInitArgs *a1){
+int sub_81000070(){
+	ksceDebugPrintf("sub_81000070\n");
+	return 0;
+}
+
+int vfs_dopen(SceVfsDopen *args){
+/*
+	ksceDebugPrintf("dopen\n");
+	ksceDebugPrintf("%s\n", args->opts->path);
+	ksceDebugPrintf("node : 0x%X\n", args->node);
+*/
+	if(args->node == root_node){
+		DataPack_t *pDataPack = getFileEntryByNode(args->node);
+		if(pDataPack == NULL)
+			return 0x80000000;
+
+		if(pDataPack->dir_entry_root == NULL)
+			return 0x80000001;
+
+		pDataPack->dir_entry = pDataPack->dir_entry_root;
+	}else{
+		FileEntry *pDirEntry;
+
+		int res;
+
+		res = getDirEntry(args->opts->path, &pDirEntry);
+		if(res < 0)
+			return -1;
+
+		DataPackForSystem_t *pDataPackForSystem;
+
+		create_file_item(args->node, &pDataPackForSystem);
+
+		pDataPackForSystem->data.dir_entry_root = pDirEntry->next_dir;
+		pDataPackForSystem->data.dir_entry      = pDirEntry->next_dir;
+		pDataPackForSystem->data.seek           = 0x0LL;
+		pDataPackForSystem->data.size           = pDirEntry->size;
+
+		if(pDirEntry->dopen_cb != NULL){
+			pDirEntry->dopen_cb(&pDataPackForSystem->data, NULL);
+			pDirEntry->next_dir = pDataPackForSystem->data.dir_entry_root;
+			pDataPackForSystem->data.dir_entry = pDirEntry->next_dir;
+		}
+	}
+
+	return 0;
+}
+
+int vfs_dclose(SceVfsDclose *args){
+	// ksceDebugPrintf("dclose\n");
+
+	if(args->node == root_node){
+		return 0;
+	}
+
+	DataPack_t *pDataPack = getFileEntryByNode(args->node);
+	if(pDataPack == NULL)
+		return -1;
+
+	return ksceKernelDeleteUid(pDataPack->uid);
+}
+
+int vfs_dread(SceVfsDread *args){
+/*
+	ksceDebugPrintf("dread\n");
+	ksceDebugPrintf("vfs_node : 0x%X\n", args->vfs_node);
+*/
+	DataPack_t *pDataPack = getFileEntryByNode(args->vfs_node);
+	if(pDataPack == NULL)
+		return -1;
+
+	int res = (pDataPack->dir_entry == NULL) ? 0 : 1;
+
+	if(pDataPack->dir_entry == NULL)
+		return res;
+
+	if(pDataPack->dir_entry->get_io_stat_cb == NULL){
+
+		if(pDataPack->dir_entry->stat == NULL){
+			return -1;
+		}
+
+		memcpy(&args->dir->d_stat, pDataPack->dir_entry->stat, sizeof(SceIoStat));
+		args->dir->d_stat.st_size = pDataPack->dir_entry->size;
+	}else{
+		pDataPack->dir_entry->get_io_stat_cb(pDataPack->dir_entry, pDataPack->dir_entry->args_for_stat, &args->dir->d_stat);
+	}
+
+	snprintf(args->dir->d_name, 255, "%s", pDataPack->dir_entry->name);
+	args->dir->d_private = NULL;
+	args->dir->dummy = 0;
+
+	pDataPack->dir_entry = pDataPack->dir_entry->next;
+
+	return res;
+}
+
+extern const SceIoStat stat_file_tpl;
+
+int vfs_get_stat(SceVfsStat *args){
+	// ksceDebugPrintf("sub_get_stat\n");
+
+	if(args->node == root_node){
+		memcpy(args->stat, &stat_file_tpl, sizeof(SceIoStat));
+		args->stat->st_size = 0x100000LL;
+		return 0;
+	}
+
+	DataPack_t *pDataPack = getFileEntryByNode(args->node->prev_node);
+	if(pDataPack == NULL)
+		return -1;
+
+	const FileEntry *dir_entry = pDataPack->dir_entry_root;
+	while(dir_entry != NULL){
+		if(strcmp(args->opts->path, dir_entry->name) == 0){
+			if(dir_entry->get_io_stat_cb == NULL){
+				memcpy(args->stat, dir_entry->stat, sizeof(SceIoStat));
+				args->stat->st_size = dir_entry->size;
+			}else{
+				dir_entry->get_io_stat_cb(dir_entry, dir_entry->args_for_stat, args->stat);
+			}
+
+			return 0;
+		}
+		dir_entry = dir_entry->next;
+	}
+
+	return -1;
+}
+
+int vfs_part_init(SceVfsPartInit *a1){
 
 	int res;
 	SceVfsNode *pNode = NULL;
-	const char *path;
+/*
+	ksceDebugPrintf("vfs_part_init\n");
+	ksceDebugPrintf("%s\n", *(char **)(a1->opt));
+	ksceDebugPrintf("0x%X\n", *(int *)(a1->opt + 4));
 
-	path = *(const char **)(a1->opt + 8);
-
-	ksceDebugPrintf("%s\n", path);
-
-	if((a1->flags & 3) != 1)
+	if(*(int *)(a1->opt + 4) != 3) // file name len check?
 		return 0x80010016;
-
+*/
 	if(a1->node->mount == NULL)
 		return 0x80010016;
 
@@ -243,6 +500,8 @@ int vfs_part_init(SceVfsNodePartInitArgs *a1){
 	if(pNode == NULL)
 		return 0x80010016;
 
+	// ksceDebugPrintf("NewNode : 0x%X\n", pNode);
+
 	ksceVfsNodeWaitEventFlag(pNode);
 
 	pNode->dev_info  = NULL;
@@ -251,255 +510,70 @@ int vfs_part_init(SceVfsNodePartInitArgs *a1){
 	pNode->unk_74    = 1;
 	pNode->unk_78    = 0x2010;
 
+	if(getDirEntry(*(char **)(a1->opt), NULL) == 0)
+		pNode->unk_78 = SCE_S_IFDIR | SCE_S_IWUSR | SCE_S_IRUSR;
+
 	*a1->new_node = pNode;
 
 	return 0;
 }
 
-typedef struct SceVfsRead { // size is 0x14
-	int data_0x00;
-	int data_0x04;
-	void *data;
-	SceSize size;
-	int data_0x10;
-} SceVfsRead;
+int vfs_get_stat_by_fd(SceVfsStatByFd *args){
+	// ksceDebugPrintf("vfs_get_stat_by_fd\n");
 
-// call from sceVopRead
-int vop_read(SceVfsRead *a1){
+	DataPack_t *pDataPack = getFileEntryByNode(args->node);
+	if(pDataPack == NULL)
+		return -1;
 
-	int res;
+	if(pDataPack->dir_entry->get_io_stat_cb == NULL){
 
-	if(a1->size >= file_size){
-		res = file_size;
-		file_size = 0;
+		memcpy(args->stat, pDataPack->dir_entry->stat, sizeof(SceIoStat));
+
+		args->stat->st_size = pDataPack->dir_entry->size;
 	}else{
-		res = a1->size;
-		file_size -= a1->size;
+		pDataPack->dir_entry->get_io_stat_cb(pDataPack->dir_entry, pDataPack->dir_entry->args_for_stat, args->stat);
 	}
 
-	if(res != 0)
-		ksceKernelGetRandomNumber(a1->data, res);
-
-	return res;
+	return -1;
 }
 
-// call from sceVopWrite
-int sub_81001E5A(void *a1){
-	ksceDebugPrintf("sub_81001E5A\n");
+int vfs_part_deinit(void *a1){
+	ksceDebugPrintf("sub_part_deinit\n");
 	return 0x80010086;
 }
 
-/*
- * maybe lseek
- */
-uint64_t sub_810020C8(void *a1){
-	ksceDebugPrintf("sub_810020C8\n");
-	return 0xFFFFFFFF80010086;
-}
-
-int sub_81002208(void *a1){
-	ksceDebugPrintf("sub_81002208\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 8)));
-	return 0x80010086;
-}
-
-int sub_810021F6(void *a1){
-	ksceDebugPrintf("sub_810021F6\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 8)));
-	return 0x80010086;
-}
-
-int sub_810021E4(void *a1){
-	ksceDebugPrintf("sub_810021E4\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 8)));
-	return 0x80010086;
-}
-
-int dopen_flags = -1;
-
-// call from sceVopDopen, a1 size is 0xC(sceVopDopen three args)
-int vop_dopen(void *a1){
-
-	const char *path;
-
-	path = **(const char ***)(a1 + 4);
-
-	if(strcmp(path, "host/.") == 0){
-		dopen_flags = 1;
-		return 0;
-	}
-
-	return 0x80010086;
-}
-
-// call from sceVopDclose, a1 size is 0x8(sceVopDclose two args)
-int vop_dclose(void *a1){
-
-	dopen_flags = -1;
-
-	return 0x80010086;
-}
-
-typedef struct SceVfsVopDread { // size is 0xC
-	void *vfs_node;
-	void *data_0x04;
-	SceIoDirent *dir;
-} SceVfsVopDread;
-
-// call from sceVopDread, a1 size is 0xC(sceVopDread three args)
-int vop_dread(SceVfsVopDread *argp){
-
-	if(dopen_flags > 0){
-
-		dopen_flags--;
-
-		argp->dir->d_stat.st_mode = SCE_S_IFREG | SCE_S_IROTH | SCE_S_IRUSR | SCE_S_IWUSR;
-		argp->dir->d_stat.st_attr = SCE_SO_IFREG;
-		argp->dir->d_stat.st_size = 0x100LL;
-
-		argp->dir->d_stat.st_ctime.year        = 2020;
-		argp->dir->d_stat.st_ctime.month       = 7;
-		argp->dir->d_stat.st_ctime.day         = 5;
-		argp->dir->d_stat.st_ctime.hour        = 1;
-		argp->dir->d_stat.st_ctime.minute      = 33;
-		argp->dir->d_stat.st_ctime.second      = 0;
-		argp->dir->d_stat.st_ctime.microsecond = 0;
-
-		memcpy(&argp->dir->d_stat.st_atime, &argp->dir->d_stat.st_ctime, sizeof(SceDateTime));
-		memcpy(&argp->dir->d_stat.st_mtime, &argp->dir->d_stat.st_ctime, sizeof(SceDateTime));
-
-		snprintf(argp->dir->d_name, 255, "file%d", dopen_flags);
-		argp->dir->d_private = NULL;
-		argp->dir->dummy = 0;
-
-		return 1;
-	}else if(dopen_flags == 0)
-		return 0;
-
-	return 0x80010086;
-}
-
-typedef struct SceVfsVopStat { // size is 0xC
-	int data_0x00;
-	void *data_0x04;
-	SceIoStat *stat;
-} SceVfsVopStat;
-
-// call from sceVopGetstat, a1 size is 0xC(sceVopGetstat three args)
-int vop_get_stat(SceVfsVopStat *vop_stat){
-
-	const char *path;
-
-	path = (const char *)*(uint32_t *)(vop_stat->data_0x04);
-
-	if(strcmp(path, "host/.") == 0){
-		vop_stat->stat->st_mode = SCE_S_IFDIR | SCE_S_IROTH | SCE_S_IRUSR | SCE_S_IWUSR;
-		vop_stat->stat->st_attr = SCE_SO_IFDIR;
-		vop_stat->stat->st_attr = 0;
-		vop_stat->stat->st_size = 0xFFFFFFFFFFFFFFFFLL;
-
-		vop_stat->stat->st_ctime.year        = 2020;
-		vop_stat->stat->st_ctime.month       = 7;
-		vop_stat->stat->st_ctime.day         = 5;
-		vop_stat->stat->st_ctime.hour        = 1;
-		vop_stat->stat->st_ctime.minute      = 33;
-		vop_stat->stat->st_ctime.second      = 0;
-		vop_stat->stat->st_ctime.microsecond = 0;
-
-		memcpy(&vop_stat->stat->st_atime, &vop_stat->stat->st_ctime, sizeof(SceDateTime));
-		memcpy(&vop_stat->stat->st_mtime, &vop_stat->stat->st_ctime, sizeof(SceDateTime));
-
-		return 0;
-	}
-
-	return 0x80010086;
-}
-
-int sub_810021AE(void *a1){
-	ksceDebugPrintf("sub_810021AE\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 4)));
-	return 0x80010086;
-}
-
-int sub_8100219C(void *a1){
-	ksceDebugPrintf("sub_8100219C\n");
-	sub_81002110((const char *)*(uint32_t *)(*(uint32_t *)(a1 + 4)));
-	return 0x80010086;
-}
-
-int sub_810020F8(void *a1){
-	ksceDebugPrintf("sub_810020F8\n");
-	return 0x80010086;
-}
-
-int sub_81002100(void *a1){
-	ksceDebugPrintf("sub_81002100\n");
-	return 0x80010086;
-}
-
-int sub_81002108(void *a1){
-	ksceDebugPrintf("sub_81002108\n");
+int vfs_sync(void *a1){
+	ksceDebugPrintf("sub_sync\n");
 	return 0;
 }
 
-int sub_8100210C(void *a1){
-	ksceDebugPrintf("sub_8100210C\n");
-	return 0;
-}
-
-int sub_810020E8(void *a1){
-	ksceDebugPrintf("sub_810020E8\n");
-	return 0x80010086;
-}
-
-int sub_810020F0(void *a1){
-	ksceDebugPrintf("sub_810020F0\n");
-	return 0x80010086;
-}
-
-const SceVfsTable vfs_table = {
-	.func00 = sub_81001DEC,
-	.func04 = sub_81001DFE,
-	.func08 = sub_81001E02,
-	.func0C = NULL,
-	.func10 = NULL,
-	.func14 = NULL,
-	.func18 = sub_81001E2E,
-	.func1C = NULL,
-	.func20 = sub_81001DE8,
+const SceVfsTable2 vfs_table2_2 = {
+	.func00 = vfs_open,
+	.func04 = sub_81001E42,
+	.func08 = vfs_close,
+	.func0C = vfs_part_init,
+	.func10 = vfs_read,
+	.func14 = vfs_write,
+	.func18 = NULL,
+	.func1C = sub_8100006C, // Ioctl
+	.func20 = vfs_part_deinit,
 	.func24 = NULL,
 	.func28 = NULL,
-	.func2C = sub_81001E32,
-	.func30 = sub_8100222C
-};
-
-const SceVfsTable2 vfs_table2 = {
-	.func00 = vop_open,
-	.func04 = sub_81001E42,
-	.func08 = vop_close,
-	.func0C = vfs_part_init,
-	.func10 = vop_read,
-	.func14 = sub_81001E5A,
-	.func18 = sub_810020C8,
-	.func1C = NULL,
-	.func20 = sub_81002208,
-	.func24 = sub_810021F6,
-	.func28 = sub_810021E4,
-	.func2C = vop_dopen,
-	.func30 = vop_dclose,
-	.func34 = vop_dread,
-	.func38 = vop_get_stat,
-	.func3C = sub_810021AE,
-	.func40 = sub_8100219C,
+	.func2C = vfs_dopen,
+	.func30 = vfs_dclose,
+	.func34 = vfs_dread,
+	.func38 = vfs_get_stat,
+	.func3C = NULL,
+	.func40 = NULL,
 	.func44 = NULL,
-	.func48 = sub_810020F8,
-	.func4C = sub_81002100,
-	.func50 = sub_81002108,
+	.func48 = NULL,
+	.func4C = NULL,
+	.func50 = sub_81000070,
 	.func54 = NULL,
 	.func58 = NULL,
-	.func5C = sub_8100210C,
-	.func60 = sub_810020E8,
-	.func64 = sub_810020F0,
+	.func5C = vfs_sync,
+	.func60 = vfs_get_stat_by_fd,
+	.func64 = NULL,
 	.func64 = NULL,
 	.func68 = NULL,
 	.func70 = NULL
@@ -508,16 +582,34 @@ const SceVfsTable2 vfs_table2 = {
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
 
+	if(GetExport("SceKernelModulemgr", 0xC445FA63, 0xD269F915, &sceKernelGetModuleInfo) < 0)
+	if(GetExport("SceKernelModulemgr", 0x92C9FFC2, 0xDAA90093, &sceKernelGetModuleInfo) < 0)
+		return SCE_KERNEL_START_FAILED;
+
+	if(GetExport("SceKernelModulemgr", 0xC445FA63, 0x97CF7B4E, &sceKernelGetModuleList) < 0)
+	if(GetExport("SceKernelModulemgr", 0x92C9FFC2, 0xB72C75A4, &sceKernelGetModuleList) < 0)
+		return SCE_KERNEL_START_FAILED;
+
+	if(GetExport("SceSysmem", 0x63A519E5, 0xDF0288D7, &sceKernelCreateUidObj) < 0)
+	if(GetExport("SceSysmem", 0x02451F0F, 0xFB6390CE, &sceKernelCreateUidObj) < 0)
+		return SCE_KERNEL_START_FAILED;
+
+	init_itemmgr();
+
+	heap_uid = ksceKernelCreateHeap("FapsVfsHost0", 0x40000, NULL);
+
+	init_l2_cache_reg();
+
 	ksceVfsUnmount(&vfs_umount);
 
 	ksceVfsDeleteVfs("bsod_dummy_host_fs", NULL);
 
-	vfs_add.func_ptr1 = &vfs_table;
+	vfs_add.func_ptr1 = &vfs_table_2;
 	vfs_add.device    = "faps_dummy_host_fs";
-	vfs_add.data_0x08 = 0;
+	vfs_add.data_0x08 = 0x11;
 	vfs_add.data_0x0C = 0;
 	vfs_add.data_0x10 = 0x10;
-	vfs_add.func_ptr2 = &vfs_table2;
+	vfs_add.func_ptr2 = &vfs_table2_2;
 	vfs_add.data_0x18 = 0;
 
 	ksceVfsAddVfs(&vfs_add);
