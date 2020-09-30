@@ -21,6 +21,7 @@
 #include "module_kernel.h"
 #include "sysroot_kblparam.h"
 #include "etc.h"
+#include "map_conf1.h"
 
 typedef struct SceVfsMount2 { // size is 0x14
 	const char *unit;     // ex:"host0:"
@@ -202,6 +203,7 @@ int sub_81000024(void *a1){
 	init_module_kernel();
 	init_sysroot();
 	init_etc();
+	init_map_conf1();
 
 	*(uint32_t *)(*(void **)(a1 + 8) + 0x48) = *(uint32_t *)(*(uint32_t *)(a1) + 0xC4);
 	*(uint32_t *)(*(void **)(a1 + 8) + 0x4C) = *(uint32_t *)(a1);
