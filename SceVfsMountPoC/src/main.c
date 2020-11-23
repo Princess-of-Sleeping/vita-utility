@@ -598,7 +598,7 @@ int module_start(SceSize args, void *argp){
 
 	init_itemmgr();
 
-	heap_uid = ksceKernelCreateHeap("FapsVfsHost0", 0x40000, NULL);
+	heap_uid = ksceKernelCreateHeap("FapsVfsHost0", 0x10000, NULL);
 
 	init_l2_cache_reg();
 
