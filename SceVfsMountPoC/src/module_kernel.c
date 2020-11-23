@@ -125,6 +125,31 @@ int write_module_cb(DataPack_t *data, const ModuleStat *args, const void *pData,
 	return (int)size;
 }
 
+void _moduleTimeInc(SceIoStat *pStat){
+
+	pStat->st_ctime.second++;
+
+	if(pStat->st_ctime.second != 60)
+		return;
+
+	pStat->st_ctime.second = 0;
+	pStat->st_ctime.minute++;
+
+	if(pStat->st_ctime.minute != 60)
+		return;
+
+	pStat->st_ctime.minute = 0;
+	pStat->st_ctime.hour++;
+}
+
+void moduleTimeInc(SceIoStat *pStat){
+
+	_moduleTimeInc(pStat);
+
+	memcpy(&pStat->st_atime, &pStat->st_ctime, sizeof(pStat->st_ctime));
+	memcpy(&pStat->st_mtime, &pStat->st_ctime, sizeof(pStat->st_ctime));
+}
+
 int dopen_cb_module(DataPack_t *data, const void *args){
 
 	FileEntry *entry_ptr = data->dir_entry_root;
@@ -154,15 +179,32 @@ int dopen_cb_module(DataPack_t *data, const void *args){
 	ModuleStat *module_args;
 	FileEntry *module_info;
 	char *module_name;
+	SceIoStat tmp_stat;
+
+	tmp_stat.st_mode = SCE_S_IFREG | SCE_S_IROTH | SCE_S_IRUSR | SCE_S_IWUSR;
+	tmp_stat.st_attr = SCE_SO_IFREG;
+	tmp_stat.st_size = 0LL;
+
+	tmp_stat.st_ctime.year        = 2020;
+	tmp_stat.st_ctime.month       = 11;
+	tmp_stat.st_ctime.day         = 23;
+	tmp_stat.st_ctime.hour        = 21;
+	tmp_stat.st_ctime.minute      = 23;
+	tmp_stat.st_ctime.second      = 15;
+	tmp_stat.st_ctime.microsecond = 0;
+
+	memcpy(&tmp_stat.st_atime, &tmp_stat.st_ctime, sizeof(tmp_stat.st_atime));
+	memcpy(&tmp_stat.st_mtime, &tmp_stat.st_ctime, sizeof(tmp_stat.st_mtime));
 
 	sceKernelGetModuleList(0x10005, 0xFF, 1, modids, &num);
 
-	for(int i=0;i<num;i++){
+	do {
+		num--;
 
 		SceKernelModuleInfo info;
 		memset(&info, 0, sizeof(info));
 		info.size = sizeof(info);
-		sceKernelGetModuleInfo(0x10005, modids[i], &info);
+		sceKernelGetModuleInfo(0x10005, modids[num], &info);
 
 		if(info.segments[0].memsz != 0){
 
@@ -191,7 +233,7 @@ int dopen_cb_module(DataPack_t *data, const void *args){
 
 			module_info->stat = ksceKernelAllocHeapMemory(heap_uid, sizeof(SceIoStat));
 
-			setToFileEntryTplStat(module_info);
+			memcpy(module_info->stat, &tmp_stat, sizeof(SceIoStat));
 			module_info->stat->st_size = (SceOff)info.segments[0].memsz;
 
 			module_info->open_cb        = (OpenCb)open_module_cb;
@@ -228,7 +270,7 @@ int dopen_cb_module(DataPack_t *data, const void *args){
 
 			module_info->stat = ksceKernelAllocHeapMemory(heap_uid, sizeof(SceIoStat));
 
-			setToFileEntryTplStat(module_info);
+			memcpy(module_info->stat, &tmp_stat, sizeof(SceIoStat));
 			module_info->stat->st_size = (SceOff)info.segments[1].memsz;
 
 			module_info->open_cb        = (OpenCb)open_module_cb;
@@ -237,7 +279,9 @@ int dopen_cb_module(DataPack_t *data, const void *args){
 			module_info->get_io_stat_cb = (GetStatCb)get_io_stat_module_cb;
 			module_info->args_for_stat = module_args;
 		}
-	}
+
+		moduleTimeInc(&tmp_stat);
+	} while(num != 0);
 
 	return 0;
 }
