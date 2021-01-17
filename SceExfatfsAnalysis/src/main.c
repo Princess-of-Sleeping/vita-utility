@@ -260,6 +260,7 @@ int module_start(SceSize args, void *argp){
 				if(pCacheList[i].cluster_start == 0){
 					LogWrite("entry offset : 0x%08X%08X [B]\n", 0, pCacheList[i].data_0x20C->rsvd_sector << 9);
 				}else{
+					// TODO:fix this
 					uint32_t entry_sector = (pCacheList[i].data_0x20C->rsvd_sector + ((pCacheList[i].cluster_start - 2) << 3) + 0x20);
 					LogWrite("entry offset : 0x%08X%08X [B]\n", entry_sector >> 23, entry_sector << 9);
 				}
