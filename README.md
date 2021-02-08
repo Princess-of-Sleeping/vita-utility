@@ -14,6 +14,8 @@ Malloc with custom memory base
 
 ### ScePfsMgrAllowDbgPfsPatch
 
+for kernel
+
 Patch to allow debug version sce_pfs app mount and pkg install. 
 
 ### SceVfsMountPoC
@@ -44,9 +46,13 @@ Synchronize all cores and wait for synchronization to occur
 
 ### act_verifier
 
+for kernel
+
 Verify DevKit/TestingKit activation file.
 
 ### kpanic_debug
+
+for kernel
 
 Switch dbgFingerprint display to module name display.
 
@@ -57,6 +63,8 @@ To view the kpanic log, you need Princess Log or an equivalent logger.
 Currently there is no more functionality.
 
 ### syscon_vs_dumper
+
+for kernel
 
 Dumper for syscon vs storage.
 
