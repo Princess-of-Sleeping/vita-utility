@@ -42,6 +42,10 @@ for kernel
 
 Synchronize all cores and wait for synchronization to occur
 
+### act_verifier
+
+Verify DevKit/TestingKit activation file.
+
 # Special thanks:
 
 HENkaku wiki
