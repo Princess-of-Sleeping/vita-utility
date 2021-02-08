@@ -12,6 +12,10 @@ for userland
 
 Malloc with custom memory base
 
+### ScePfsMgrAllowDbgPfsPatch
+
+Patch to allow debug version sce_pfs app mount and pkg install. 
+
 ### SceVfsMountPoC
 
 for kernel
