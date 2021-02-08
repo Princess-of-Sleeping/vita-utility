@@ -46,6 +46,16 @@ Synchronize all cores and wait for synchronization to occur
 
 Verify DevKit/TestingKit activation file.
 
+### kpanic_debug
+
+Switch dbgFingerprint display to module name display.
+
+note
+
+To view the kpanic log, you need Princess Log or an equivalent logger.
+
+Currently there is no more functionality.
+
 # Special thanks:
 
 HENkaku wiki
