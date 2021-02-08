@@ -56,6 +56,12 @@ To view the kpanic log, you need Princess Log or an equivalent logger.
 
 Currently there is no more functionality.
 
+### syscon_vs_dumper
+
+Dumper for syscon vs storage.
+
+vs storage includes resume context address, rtc tick, dipsw, etc.
+
 # Special thanks:
 
 HENkaku wiki
