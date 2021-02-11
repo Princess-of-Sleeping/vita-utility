@@ -1,0 +1,7 @@
+SceSysRw:
+  attributes: 0
+  version:
+    major: 0x1
+    minor: 0
+  main:
+    start: module_start
