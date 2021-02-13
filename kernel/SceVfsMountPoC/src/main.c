@@ -95,7 +95,7 @@ typedef struct SceVfsTable2 { // size is 0x74?
 	const void *func70;
 } SceVfsTable2;
 
-typedef struct SceVfsAdd {     // size is 0x1C
+typedef struct SceVfsAdd {     // size is 0x20
 	const SceVfsTable *func_ptr1;
 	const char *device;    // ex:"bsod_dummy_host_fs"
 	int data_0x08;         // ex:0x11
@@ -103,6 +103,7 @@ typedef struct SceVfsAdd {     // size is 0x1C
 	int data_0x10;         // ex:0x10
 	const SceVfsTable2 *func_ptr2;
 	int data_0x18;
+	struct SceVfsAdd *prev;
 } SceVfsAdd;
 
 int ksceVfsMount(const SceVfsMount *pVfsMount);
