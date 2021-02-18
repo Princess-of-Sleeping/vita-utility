@@ -1,0 +1,97 @@
+/*
+ * Corelock sample
+ * Copyright (C) 2020 Princess of Sleeping
+ *
+ * This software may be modified and distributed under the terms
+ * of the MIT license.  See the LICENSE file for details.
+ */
+
+#include <psp2kern/kernel/modulemgr.h>
+#include <psp2kern/kernel/threadmgr.h>
+#include <psp2kern/kernel/cpu.h>
+#include <psp2kern/kernel/sysmem.h>
+#include <taihen.h>
+
+#define GetExport(modname, libnid, funcnid, func) module_get_export_func(0x10005, modname, libnid, funcnid, (uintptr_t *)func)
+
+int module_get_export_func(SceUID pid, const char *modname, uint32_t libnid, uint32_t funcnid, uintptr_t *func);
+
+typedef enum SceCorelockCore {
+	SCE_CORELOCK_CORE0 = 1,
+	SCE_CORELOCK_CORE1 = 2,
+	SCE_CORELOCK_CORE2 = 3,
+	SCE_CORELOCK_CORE3 = 0
+} SceCorelockCore;
+
+typedef struct SceCorelockContext {
+	int lock;
+	int16_t core_count;
+	int16_t last_wait_core; // 0:core3, 1:core0, 2:core1, 3:core2
+} SceCorelockContext;
+
+void (* sceKernelCorelockContextInitialize)(SceCorelockContext *pCtx);
+
+void (* sceKernelCorelockLock)(SceCorelockContext *ctx, int core);
+void (* sceKernelCorelockUnlock)(SceCorelockContext *ctx);
+
+SceCorelockContext corelock_ctx;
+
+int sceCorelockThread(SceSize args, void *argp){
+
+	int this_cpu_core = ksceKernelCpuGetCpuId();
+
+	ksceDebugPrintf("[%d] sceCorelockThread 0x%X\n", this_cpu_core, ksceKernelGetThreadId());
+
+	if(this_cpu_core == 3){
+		ksceDebugPrintf("[%d] waiting 5 second\n", this_cpu_core);
+		ksceKernelDelayThread(5 * 1000 * 1000);
+		ksceDebugPrintf("[%d] after 5 second\n", this_cpu_core);
+	}else{
+		ksceDebugPrintf("[%d] invoke sceKernelCorelockLock\n", this_cpu_core);
+		sceKernelCorelockLock(&corelock_ctx, SCE_CORELOCK_CORE3);
+		ksceDebugPrintf("[%d] after  sceKernelCorelockLock\n", this_cpu_core);
+	}
+
+	ksceDebugPrintf("[%d] invoke sceKernelCorelockUnlock\n", this_cpu_core);
+	sceKernelCorelockUnlock(&corelock_ctx); // Cores other than core3 cannot execute the code below unless core3 passes here
+	ksceDebugPrintf("[%d] after  sceKernelCorelockUnlock\n", this_cpu_core);
+
+	ksceDebugPrintf("[%d] Corelock time %lld [usec]\n", this_cpu_core, ksceKernelGetSystemTimeWide());
+	ksceDebugPrintf("[%d] sceCorelockThread exit\n", this_cpu_core);
+
+	return 0;
+}
+
+void _start() __attribute__ ((weak, alias("module_start")));
+int module_start(SceSize args, void *argp){
+
+	ksceDebugPrintf("[%d] module_start\n", ksceKernelCpuGetCpuId());
+
+	if(ksceKernelCpuGetCpuId() != 0){
+		ksceDebugPrintf("Make sure the module_start call is core0\n");
+		return SCE_KERNEL_START_NO_RESIDENT;
+	}
+
+	GetExport("SceSysmem", 0x54BF2BAB, 0x4CD4D921, &sceKernelCorelockContextInitialize);
+	GetExport("SceSysmem", 0x54BF2BAB, 0x9D72DD1B, &sceKernelCorelockLock);
+	GetExport("SceSysmem", 0x54BF2BAB, 0xA5C9DBBA, &sceKernelCorelockUnlock);
+
+	sceKernelCorelockContextInitialize(&corelock_ctx);
+
+	SceUID thid_core1, thid_core2, thid_core3;
+
+	thid_core1 = ksceKernelCreateThread("SceSyncThreadCore1", sceCorelockThread, 0x10000100, 0x1000, 0, 1 << 1, NULL);
+	thid_core2 = ksceKernelCreateThread("SceSyncThreadCore2", sceCorelockThread, 0x10000100, 0x1000, 0, 1 << 2, NULL);
+	thid_core3 = ksceKernelCreateThread("SceSyncThreadCore3", sceCorelockThread, 0x10000100, 0x1000, 0, 1 << 3, NULL);
+
+	ksceDebugPrintf("thid_core1 : 0x%X\n", thid_core1);
+	ksceDebugPrintf("thid_core2 : 0x%X\n", thid_core2);
+	ksceDebugPrintf("thid_core3 : 0x%X\n", thid_core3);
+
+	ksceKernelStartThread(thid_core1, 0, NULL);
+	ksceKernelStartThread(thid_core2, 0, NULL);
+	ksceKernelStartThread(thid_core3, 0, NULL);
+	sceCorelockThread(0, NULL);
+
+	return SCE_KERNEL_START_SUCCESS;
+}

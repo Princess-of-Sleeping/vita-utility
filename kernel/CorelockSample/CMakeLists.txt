@@ -8,7 +8,7 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   endif()
 endif()
 
-project(CpuCoreSync)
+project(corelock_sample)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-q -Wall -O3 -fno-inline")
@@ -16,22 +16,22 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti -fno-exceptions")
 
 enable_language(C ASM)
 
-add_executable(CpuCoreSync
+add_executable(corelock_sample
   src/main.c
 )
 
-target_link_libraries(CpuCoreSync
+target_link_libraries(corelock_sample
   SceCpuForDriver_stub
   SceDebugForDriver_stub
   SceThreadmgrForDriver_stub
   taihenModuleUtils_stub
 )
 
-set_target_properties(CpuCoreSync
+set_target_properties(corelock_sample
   PROPERTIES LINK_FLAGS "-nostdlib"
 )
 
-vita_create_self(cpu_core_sync.skprx CpuCoreSync
+vita_create_self(corelock_sample.skprx corelock_sample
   CONFIG exports.yml
   UNSAFE
 )
