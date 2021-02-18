@@ -22,9 +22,9 @@ Malloc with custom memory base
 
 Basically the same as sceKernelAllocHeapMemory
 
-# CpuCoreSync
+# CorelockSample
 
-Synchronize all cores and wait for synchronization to occur
+The Corelock Sample.
 
 # act_verifier
 
