@@ -9,7 +9,9 @@
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>
 #include <psp2kern/kernel/sysclib.h>
+#include <psp2kern/kernel/debug.h>
 #include <psp2kern/io/fcntl.h>
+#include <taihen.h>
 #include "log.h"
 
 int write_file(const char *path, const void *data, SceSize size){
@@ -120,7 +122,7 @@ typedef struct SceExfatfsFileCache { // size is 0x290 bytes
 	SceExfatfsDateTime ctime;
 	SceExfatfsDateTime atime;
 	SceExfatfsDateTime mtime;
-	uint32_t cluster_start;
+	int cluster_start;
 	uint32_t data_0x248;
 	uint32_t data_0x24C;
 	uint32_t data_0x250;
@@ -131,7 +133,7 @@ typedef struct SceExfatfsFileCache { // size is 0x290 bytes
 	uint32_t data_0x264;
 	uint32_t data_0x268;
 	uint32_t data_0x26C;
-	uint32_t data_0x270;
+	uint32_t data_0x270; // this is uint16_t
 	uint32_t data_0x274;
 	uint32_t data_0x278;
 	void *data_0x27C;
@@ -141,7 +143,7 @@ typedef struct SceExfatfsFileCache { // size is 0x290 bytes
 	uint32_t data_0x28C;
 } SceExfatfsFileCache;
 
-int WCharToChar(char *dst, uint16_t *src, int len){
+int WCharToChar(char *dst, const uint16_t *src, int len){
 
 	int idx = 0;
 
@@ -155,17 +157,161 @@ int WCharToChar(char *dst, uint16_t *src, int len){
 	return 0;
 }
 
+// create cache
+
+/*
+ * pData - SceExfatfs_data + 0x80
+ */
+tai_hook_ref_t sub_81006BB0_ref;
+SceExfatfsFileCache *sub_81006BB0_patch(void *pData, SceExfatfsPartCtx *pCtx, uint16_t *path){
+
+	const void *lr;
+	asm volatile("mov %0, lr\n":"=r"(lr));
+
+	SceExfatfsFileCache *res = TAI_CONTINUE(SceExfatfsFileCache *, sub_81006BB0_ref, pData, pCtx, path);
+
+
+	char loc_path[0x204];
+	memset(loc_path, 0, sizeof(loc_path));
+
+	WCharToChar(loc_path, path, 0x104);
+
+	ksceDebugPrintf("sub_81006BB0:lr(0x%X):0x%X %-27s:%s\n", lr, res, pCtx->blk_name, loc_path);
+
+
+	// don't use uma0 cache
+	if(res != NULL && strcmp(pCtx->blk_name, "sdstor0:uma-pp-act-a") == 0){
+
+		memset(res, 0, sizeof(*res));
+
+		res->pFileName = res->path;
+		res->cluster_start = -1;
+		res->data_0x250 = ~1;
+		res->data_0x260 = ~1;
+		res->data_0x280 = ~1;
+		res->data_0x284 = ~1;
+
+		res = NULL;
+	}
+
+	return res;
+}
+
+tai_hook_ref_t sub_81003384_ref;
+int sub_81003384_patch(SceExfatfsFileCache *info, const char *name, SceSize name_length, void *a4){
+
+	const void *lr;
+	asm volatile("mov %0, lr\n":"=r"(lr));
+
+	char loc_path[0x204];
+	memset(loc_path, 0, sizeof(loc_path));
+
+	WCharToChar(loc_path, info->path, 0x104);
+
+	int res = TAI_CONTINUE(int, sub_81003384_ref, info, name, name_length, a4);
+
+	ksceDebugPrintf("sub_81003348:lr(0x%X):0x%X %s %s:%s:0x%08X:0x%08X\n", lr, res, info->data_0x20C->blk_name, loc_path, name, name_length, a4);
+
+	return res;
+}
+
+tai_hook_ref_t sub_81009CA0_ref;
+int sub_81009CA0_patch(int a1){
+
+	const void *lr;
+	asm volatile("mov %0, lr\n":"=r"(lr));
+
+	int res = TAI_CONTINUE(int, sub_81009CA0_ref, a1);
+
+	ksceDebugPrintf("sub_81009CA0:lr(0x%X):0x%X 0x%08X\n", lr, res, *(int *)a1);
+
+	return res;
+}
+
 /*
  * TODO
  * look SceExfatfs_func_0x81008198
  */
 
+#define HookOffset(modid, offset, thumb, func_name) \
+	taiHookFunctionOffsetForKernel(0x10005, &func_name ## _ref, modid, 0, offset, thumb, func_name ## _patch)
+
+#define HookExport(module_name, library_nid, func_nid, func_name) \
+	taiHookFunctionExportForKernel(0x10005, &func_name ## _ref, module_name, library_nid, func_nid, func_name ## _patch)
+
+typedef struct SceVfsAdd {     // size is 0x20
+	const void *func_ptr1;
+	const char *device;    // ex:"bsod_dummy_host_fs"
+	int data_0x08;         // ex:0x11
+	int data_0x0C;
+	int data_0x10;         // ex:0x10
+	const void *func_ptr2;
+	int data_0x18;
+	struct SceVfsAdd *prev;
+} SceVfsAdd;
+
+const char patch1[] = {
+	0x00, 0x20, 0x02, 0x90,
+	0x00, 0xBF, 0x00, 0xBF,
+	0x00, 0xBF, 0x00, 0xBF
+};
+
+const char patch2[] = {
+	0x00, 0x20, 0x00, 0xBF,
+	0x00, 0xBF, 0x00, 0xBF
+};
+
+const char patch3[] = {
+	0x00, 0x20, 0x00, 0xBF,
+	0x00, 0xBF, 0x00, 0xBF,
+	0x00, 0xBF, 0x00, 0xBF,
+	0x00, 0xBF
+};
+
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
 
+	SceKernelModuleInfo sce_info;
 	SceUID moduleid = ksceKernelSearchModuleByName("SceExfatfs");
 
-	SceKernelModuleInfo sce_info;
+	// HookOffset(moduleid, 0x6BB0, 1, sub_81006BB0); // create cache
+	// HookOffset(moduleid, 0x3384, 1, sub_81003384);
+	// HookOffset(moduleid, 0x9CA0, 1, sub_81009CA0);
+
+	// disable cache test, but if enable this, vita non bootable from next open file time.
+	if(0){
+		// part init
+		taiInjectDataForKernel(0x10005, moduleid, 0, 0x9D1A, patch1, sizeof(patch1));
+		taiInjectDataForKernel(0x10005, moduleid, 0, 0x9D2C, patch2, sizeof(patch2));
+
+		// vfs_ioopen
+		char _patch = 0xE0;
+		taiInjectDataForKernel(0x10005, moduleid, 0, 0x9226, patch3, sizeof(patch3));
+		taiInjectDataForKernel(0x10005, moduleid, 0, 0x923D, &_patch, 1);
+
+		// vfs_getiostat
+		taiInjectDataForKernel(0x10005, moduleid, 0, 0x9F06, patch2, sizeof(patch2));
+	}
+
+	// SceIofilemgr test
+	if(0){
+		moduleid = ksceKernelSearchModuleByName("SceIofilemgr");
+
+		memset(&sce_info, 0, sizeof(sce_info));
+		sce_info.size = sizeof(sce_info);
+		ksceKernelGetModuleInfo(0x10005, moduleid, &sce_info);
+
+		// SceVfs tree test
+		if(0){
+			SceVfsAdd *pSceVfsAdd = *(SceVfsAdd **)((uintptr_t)sce_info.segments[1].vaddr + 0x19F4);
+
+			while(pSceVfsAdd != NULL){
+				ksceDebugPrintf("%s\n", pSceVfsAdd->device);
+				pSceVfsAdd = pSceVfsAdd->prev;
+			}
+		}
+	}
+
 	memset(&sce_info, 0, sizeof(sce_info));
 	sce_info.size = sizeof(sce_info);
 	ksceKernelGetModuleInfo(0x10005, moduleid, &sce_info);

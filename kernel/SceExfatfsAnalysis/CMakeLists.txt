@@ -26,11 +26,13 @@ add_executable(SceExfatfsAnalysis
 )
 
 target_link_libraries(SceExfatfsAnalysis
+  SceDebugForDriver_stub
   SceIofilemgrForDriver_stub
   SceSysclibForDriver_stub
   SceModulemgrForDriver_stub
   SceModulemgrForKernel_stub
   SceSysmemForDriver_stub
+  taihenForKernel_stub
 )
 
 set_target_properties(SceExfatfsAnalysis
