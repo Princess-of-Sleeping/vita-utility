@@ -268,6 +268,59 @@ const char patch3[] = {
 	0x00, 0xBF
 };
 
+typedef struct SceUIDIoMountEventClass { // size is 0x4C
+/*
+	int data_0x00;
+	void *data_0x04;
+*/
+	uint32_t sce_rsvd[2];
+	int data_0x08;
+	void *data_0x0C;
+	void *data_0x10;
+	void *data_0x14;
+	int data_0x18;
+	int data_0x1C;    // 1
+	int data_0x20;    // 0x100
+	int data_0x24;
+	void *data_0x28;
+	void *data_0x2C;
+
+	int data_0x30;
+	int data_0x34;
+	SceUID data_0x38; // this obj uid
+	int data_0x3C;    // 0x202
+
+	int data_0x40;
+	void *data_0x44;
+	struct SceUIDIoMountEventClass *next;
+} SceUIDIoMountEventClass;
+
+typedef struct SceIoPartConfig {
+	const char *device;
+	const char *blockdev_fs;
+	const char *device_block[2];
+	int mount_id;
+} SceIoPartConfig;
+
+typedef struct SceIoPartEntry { // size is 0x38
+	int mount_id;
+	const char *dev_unix;
+	int data_0x0C;
+	int16_t dev_major[2];
+
+	int8_t dev_minor[4];
+	const char *dev_fs;
+	struct {
+		int unk;
+		SceIoPartConfig *config;
+	} ent[2];
+
+	SceUIDIoMountEventClass *mount_event;
+	int data_0x2C;
+	int data_0x30;
+	int data_0x34;
+} SceIoPartEntry;
+
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
 
@@ -310,7 +363,21 @@ int module_start(SceSize args, void *argp){
 				pSceVfsAdd = pSceVfsAdd->prev;
 			}
 		}
+
+		// SceIoPartEntry array test
+		if(0){
+			SceIoPartEntry *pSceIoPartEntry = (SceIoPartEntry *)((uintptr_t)sce_info.segments[1].vaddr + 0x1A90);
+
+			for(int i=0;i<0x20;i++){
+				if(pSceIoPartEntry[i].mount_id == 0)
+					continue;
+
+				ksceDebugPrintf("%s\n", pSceIoPartEntry[i].ent[0].config->device);
+			}
+		}
 	}
+
+	return 0;
 
 	memset(&sce_info, 0, sizeof(sce_info));
 	sce_info.size = sizeof(sce_info);
