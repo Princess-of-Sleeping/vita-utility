@@ -29,12 +29,12 @@ set_target_properties(${PROJECT_NAME}
   PROPERTIES LINK_FLAGS "-nostdlib"
 )
 
-vita_create_self(eboot.bin ${PROJECT_NAME}
+vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME}
   CONFIG exports.yml
   UNSAFE
 )
 
-vita_create_vpk(sysrw.vpk "SYSRW0000" eboot.bin
+vita_create_vpk(sysrw.vpk "SYSRW0000" ${PROJECT_NAME}.self
   VERSION "01.00"
   NAME "SysRw"
 )

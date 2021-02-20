@@ -22,6 +22,7 @@ add_executable(corelock_sample
 
 target_link_libraries(corelock_sample
   SceCpuForDriver_stub
+  SceCpuForKernel_stub
   SceDebugForDriver_stub
   SceThreadmgrForDriver_stub
   taihenModuleUtils_stub

@@ -33,4 +33,4 @@ vita_create_self(pfsmgr_allow_dbgpfs_patch.skprx ${PROJECT_NAME}
   UNSAFE
 )
 
-vita_create_stubs(stubs ${PROJECT_NAME} exports.yml)
+vita_create_stubs(stubs_${PROJECT_NAME} ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/exports.yml KERNEL)

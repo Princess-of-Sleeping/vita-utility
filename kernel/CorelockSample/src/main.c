@@ -9,30 +9,7 @@
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/threadmgr.h>
 #include <psp2kern/kernel/cpu.h>
-#include <psp2kern/kernel/sysmem.h>
-#include <taihen.h>
-
-#define GetExport(modname, libnid, funcnid, func) module_get_export_func(0x10005, modname, libnid, funcnid, (uintptr_t *)func)
-
-int module_get_export_func(SceUID pid, const char *modname, uint32_t libnid, uint32_t funcnid, uintptr_t *func);
-
-typedef enum SceCorelockCore {
-	SCE_CORELOCK_CORE0 = 1,
-	SCE_CORELOCK_CORE1 = 2,
-	SCE_CORELOCK_CORE2 = 3,
-	SCE_CORELOCK_CORE3 = 0
-} SceCorelockCore;
-
-typedef struct SceCorelockContext {
-	int lock;
-	int16_t core_count;
-	int16_t last_wait_core; // 0:core3, 1:core0, 2:core1, 3:core2
-} SceCorelockContext;
-
-void (* sceKernelCorelockContextInitialize)(SceCorelockContext *pCtx);
-
-void (* sceKernelCorelockLock)(SceCorelockContext *ctx, int core);
-void (* sceKernelCorelockUnlock)(SceCorelockContext *ctx);
+#include <psp2kern/kernel/debug.h>
 
 SceCorelockContext corelock_ctx;
 
@@ -48,12 +25,12 @@ int sceCorelockThread(SceSize args, void *argp){
 		ksceDebugPrintf("[%d] after 5 second\n", this_cpu_core);
 	}else{
 		ksceDebugPrintf("[%d] invoke sceKernelCorelockLock\n", this_cpu_core);
-		sceKernelCorelockLock(&corelock_ctx, SCE_CORELOCK_CORE3);
+		ksceKernelCorelockLock(&corelock_ctx, SCE_CORELOCK_CORE3);
 		ksceDebugPrintf("[%d] after  sceKernelCorelockLock\n", this_cpu_core);
 	}
 
 	ksceDebugPrintf("[%d] invoke sceKernelCorelockUnlock\n", this_cpu_core);
-	sceKernelCorelockUnlock(&corelock_ctx); // Cores other than core3 cannot execute the code below unless core3 passes here
+	ksceKernelCorelockUnlock(&corelock_ctx); // Cores other than core3 cannot execute the code below unless core3 passes here
 	ksceDebugPrintf("[%d] after  sceKernelCorelockUnlock\n", this_cpu_core);
 
 	ksceDebugPrintf("[%d] Corelock time %lld [usec]\n", this_cpu_core, ksceKernelGetSystemTimeWide());
@@ -72,11 +49,7 @@ int module_start(SceSize args, void *argp){
 		return SCE_KERNEL_START_NO_RESIDENT;
 	}
 
-	GetExport("SceSysmem", 0x54BF2BAB, 0x4CD4D921, &sceKernelCorelockContextInitialize);
-	GetExport("SceSysmem", 0x54BF2BAB, 0x9D72DD1B, &sceKernelCorelockLock);
-	GetExport("SceSysmem", 0x54BF2BAB, 0xA5C9DBBA, &sceKernelCorelockUnlock);
-
-	sceKernelCorelockContextInitialize(&corelock_ctx);
+	ksceKernelCorelockContextInitialize(&corelock_ctx);
 
 	SceUID thid_core1, thid_core2, thid_core3;
 

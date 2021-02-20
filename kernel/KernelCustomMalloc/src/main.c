@@ -25,14 +25,6 @@ void *(* sceUIDtoObject)(SceUID uid);
 char init_buff1[0xC4];
 char init_buff2[0x48];
 
-typedef struct SceAllocOpt {
-    SceSize size;   // 0x14
-    SceSize data04; // maybe len align?
-    SceSize align;
-    int data0C;
-    int data10; 
-} SceAllocOpt;
-
 void *(* sceKernelAllocInternal)(void *ctx, SceSize len, SceAllocOpt *pOpt);
 void (* sceKernelFreeInternal)(void *ctx, void *ptr);
 

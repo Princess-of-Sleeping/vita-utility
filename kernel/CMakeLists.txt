@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 2.8)
+
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  if(DEFINED ENV{VITASDK})
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VITASDK}/share/vita.toolchain.cmake" CACHE PATH "toolchain file")
+  else()
+    message(FATAL_ERROR "Please define VITASDK to point to your SDK path!")
+  endif()
+endif()
+
+project(vita-utility-kernel)
+
+add_subdirectory(act_verifier)
+add_subdirectory(CorelockSample)
+add_subdirectory(KernelCustomMalloc)
+add_subdirectory(kpanic_debug)
+add_subdirectory(MappingVaddrSample)
+add_subdirectory(SceExfatfsAnalysis)
+add_subdirectory(ScePfsMgrAllowDbgPfsPatch)
+add_subdirectory(SceVfsMountPoC)
+add_subdirectory(syscon_vs_dumper)
