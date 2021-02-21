@@ -30,6 +30,12 @@ The Corelock Sample.
 
 Verify DevKit/TestingKit activation file.
 
+# map_user_memblk_by_paddr
+
+Mapping userland memory block by any paddr.
+
+It is also possible to refer to kernel memory directly from userland.
+
 # kpanic_debug
 
 Switch dbgFingerprint display to module name display.
