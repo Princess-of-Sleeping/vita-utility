@@ -32,7 +32,6 @@ int write_file(const char *path, const void *data, SceSize size){
 typedef struct SceExfatfsFileCache SceExfatfsFileCache;
 
 typedef struct exfat_ctx { //size is 0x430 bytes
-
 	const char *blk_name;
 	uint32_t unk_4;
 	uint32_t unk_8;
@@ -40,12 +39,12 @@ typedef struct exfat_ctx { //size is 0x430 bytes
 
 	uint32_t unk_10;
 	uint32_t available_clusters; // Number of clusters available
-	SceExfatfsFileCache* unk_18;
+	void *pMbr;
 	uint32_t unk_1C;
 
 	uint32_t unk_20;
 	uint32_t unk_24;
-	uint32_t unk_28;
+	void *unk_28; // pointer of unk_80
 	uint32_t unk_2C;
 
 	uint32_t unk_30;
@@ -97,10 +96,25 @@ typedef struct exfat_ctx { //size is 0x430 bytes
 	uint32_t unk_C4;
 	uint32_t blk_size; // sector num
 	uint32_t unk_CC;
+	char data_0xD0[0x80];
 
-	char data1[0x310];
+	// {
+	char data_0x150[0x208]; // unused?
+	// }
+
+	char data_0x358[0x8];
+
+	// {
+	char data_0x360[0x40];
+	// }
+
+	char data_0x3A0[0x40];
 	uint32_t fast_mutex_SceExfatfsRoot; //offset 0x3E0, 7B0C90
-	char data2[0x4C];
+	void *unk_0x3E4;
+	SceUID unk_0x3E8;
+	void *unk_0x3EC;
+
+	char data2[0x40];
 } SceExfatfsPartCtx;
 
 typedef struct SceExfatfsDateTime { // size is 0xC
@@ -142,6 +156,24 @@ typedef struct SceExfatfsFileCache { // size is 0x290 bytes
 	uint32_t data_0x288; // cluster_num
 	uint32_t data_0x28C;
 } SceExfatfsFileCache;
+
+typedef struct SceExfatfsMbr { // size is 0x200
+	char data[0x200];
+} SceExfatfsMbr;
+
+typedef struct SceExfatfsSharedResource { // size is 0x295D60
+	SceExfatfsPartCtx part_ctx[0xF];
+	SceExfatfsMbr mbr[0xF];
+	void *data_0x5CD0;
+	int data_0x5CD4;
+	SceExfatfsFileCache fnode[0x400];
+	SceExfatfsFileCache fnode_ReserveUnusedFd[0xC00];
+	int data_0x295CD8[0x78 >> 2]; // unknown
+	int data_0x295D50; // All SceExfatfsFileCache elements number?
+	int data_0x295D54; // Available SceExfatfs_data_0x5D50 elements number
+	int data_0x295D58; // Related to ReserveUnusedFd
+	int data_0x295D5C; // Related to ReserveUnusedFd
+} SceExfatfsSharedResource;
 
 int WCharToChar(char *dst, const uint16_t *src, int len){
 
@@ -377,104 +409,121 @@ int module_start(SceSize args, void *argp){
 		}
 	}
 
-	return 0;
+	// return 0;
 
 	memset(&sce_info, 0, sizeof(sce_info));
 	sce_info.size = sizeof(sce_info);
 	ksceKernelGetModuleInfo(0x10005, moduleid, &sce_info);
 
-	SceExfatfsPartCtx *pPartCtxList = (SceExfatfsPartCtx *)((uintptr_t)sce_info.segments[1].vaddr + 0x80);
+	SceExfatfsSharedResource *pSharedResource = (SceExfatfsSharedResource *)((uintptr_t)sce_info.segments[1].vaddr + 0x80);
 
-	/*
-	 * maybe
-	 * { // SceExfatfs_data + 0x5D50
-	 * 	void *data0;
-	 * 	int data1;
-	 * 	SceExfatfsFileCache list[];
-	 * }
-	 */
-	SceExfatfsFileCache *pCacheList = (SceExfatfsFileCache *)((uintptr_t)sce_info.segments[1].vaddr + 0x5D58);
-
-	ksceIoRemove("sd0:dump/sce_exfatfs.txt");
-	LogOpen("sd0:dump/sce_exfatfs.txt");
+	ksceIoRemove("uma0:sce_exfatfs.txt");
+	LogOpen("uma0:sce_exfatfs.txt");
 
 	LogWrite("text %p, 0x%X\n", sce_info.segments[0].vaddr, sce_info.segments[0].memsz);
 	LogWrite("data %p, 0x%X\n", sce_info.segments[1].vaddr, sce_info.segments[1].memsz);
 	LogWrite("\n");
 
-	for(int i=0;i<10;i++){
-		LogWrite("0x%08X\n", i);
-		LogWrite("%s\n", pPartCtxList[i].blk_name);
-		LogWrite("unk_4             :0x%08X\n", pPartCtxList[i].unk_4);
-		LogWrite("unk_8             :0x%08X\n", pPartCtxList[i].unk_8);
-		LogWrite("rsvd_sector       :0x%08X\n", pPartCtxList[i].rsvd_sector);
-		LogWrite("unk_10            :0x%08X\n", pPartCtxList[i].unk_10);
-		LogWrite("available_clusters:0x%08X\n", pPartCtxList[i].available_clusters);
-		LogWrite("unk_1C            :0x%08X\n", pPartCtxList[i].unk_1C);
+	LogWrite("SceExfatfsSharedResource size : 0x%X\n", sizeof(SceExfatfsSharedResource));
+	LogWrite("\n");
 
-		if(pPartCtxList[i].unk_B4 == 1){
+	char **ppSomeList = (char **)((uintptr_t)sce_info.segments[1].vaddr + 0x30);
+
+	for(int i=0;i<8;i++){
+		if(ppSomeList[i] == NULL)
+			continue;
+
+		LogWrite("%s\n", ppSomeList[i]);
+	}
+	LogWrite("\n");
+
+	for(int i=0;i<15;i++){
+
+		SceExfatfsPartCtx *pPartCtxList = &(pSharedResource->part_ctx[i]);
+
+		if(pPartCtxList->blk_name == NULL)
+			continue;
+
+		if(0){
+			char part_ctx_path[0x80];
+			snprintf(part_ctx_path, sizeof(part_ctx_path), "uma0:part_ctx_%02d.bin", i);
+
+			write_file(part_ctx_path, pPartCtxList, sizeof(*pPartCtxList));
+		}
+
+		LogWrite("%02d\n", i);
+		LogWrite("%s\n", pPartCtxList->blk_name);
+		LogWrite("unk_4             :0x%08X\n", pPartCtxList->unk_4);
+		LogWrite("unk_8             :0x%08X\n", pPartCtxList->unk_8);
+		LogWrite("rsvd_sector       :0x%08X\n", pPartCtxList->rsvd_sector);
+		LogWrite("unk_10            :0x%08X\n", pPartCtxList->unk_10);
+		LogWrite("available_clusters:0x%08X\n", pPartCtxList->available_clusters);
+		LogWrite("unk_1C            :0x%08X\n", pPartCtxList->unk_1C);
+
+		if(pPartCtxList->unk_B4 == 1){
 			LogWrite("FAT16\n");
-		}else if(pPartCtxList[i].unk_B4 == 2){
+		}else if(pPartCtxList->unk_B4 == 2){
 			LogWrite("exFAT\n");
 		}else{
-			LogWrite("unk_B4:0x%08X\n", pPartCtxList[i].unk_B4);
+			LogWrite("unk_B4:0x%08X\n", pPartCtxList->unk_B4);
 		}
-		LogWrite("blk_size:0x%08X(0x%08X%08X byte)\n", pPartCtxList[i].blk_size, pPartCtxList[i].blk_size >> 23, pPartCtxList[i].blk_size << 9);
+		LogWrite("blk_size:0x%08X(0x%08X%08X byte)\n", pPartCtxList->blk_size, pPartCtxList->blk_size >> 23, pPartCtxList->blk_size << 9);
 		LogWrite("\n");
 	}
 
-	for(int i=0;i<445;i++){
-		if(pCacheList[i].path[0] != 0){
+	for(int i=0;i<0x400;i++){
+		SceExfatfsFileCache *pFnode = &(pSharedResource->fnode[i]);
+
+		if(pFnode->path[0] != 0){
 			LogWrite("%03d\n", i);
 
-			if(pCacheList[i].path[0] == '/'){
+			if(pFnode->path[0] == '/'){
 				char path[0x208];
 				memset(path, 0, sizeof(path));
-				WCharToChar(path, pCacheList[i].path, 0x104);
+				WCharToChar(path, pFnode->path, 0x104);
 				LogWrite("path:%s\n", path);
 			}
 
-			LogWrite("0x%llX byte\n", pCacheList[i].size);
-			LogWrite("blk_name:%s\n", pCacheList[i].data_0x20C->blk_name);
+			LogWrite("0x%llX byte\n", pFnode->size);
+			LogWrite("blk_name:%s\n", pFnode->data_0x20C->blk_name);
 
 			LogWrite(
-				"ctime:%04d/%02d/%02d %02d/%02d/%02d\n",
-				pCacheList[i].ctime.year,
-				pCacheList[i].ctime.month,
-				pCacheList[i].ctime.day,
-				pCacheList[i].ctime.hour,
-				pCacheList[i].ctime.minute,
-				pCacheList[i].ctime.second
+				"ctime:%04d/%02d/%02d %02d/%02d/%02d ",
+				pFnode->ctime.year,
+				pFnode->ctime.month,
+				pFnode->ctime.day,
+				pFnode->ctime.hour,
+				pFnode->ctime.minute,
+				pFnode->ctime.second
 			);
 
 			LogWrite(
-				"atime:%04d/%02d/%02d %02d/%02d/%02d\n",
-				pCacheList[i].atime.year,
-				pCacheList[i].atime.month,
-				pCacheList[i].atime.day,
-				pCacheList[i].atime.hour,
-				pCacheList[i].atime.minute,
-				pCacheList[i].atime.second
+				"atime:%04d/%02d/%02d %02d/%02d/%02d ",
+				pFnode->atime.year,
+				pFnode->atime.month,
+				pFnode->atime.day,
+				pFnode->atime.hour,
+				pFnode->atime.minute,
+				pFnode->atime.second
 			);
 
 			LogWrite(
 				"mtime:%04d/%02d/%02d %02d/%02d/%02d\n",
-				pCacheList[i].mtime.year,
-				pCacheList[i].mtime.month,
-				pCacheList[i].mtime.day,
-				pCacheList[i].mtime.hour,
-				pCacheList[i].mtime.minute,
-				pCacheList[i].mtime.second
+				pFnode->mtime.year,
+				pFnode->mtime.month,
+				pFnode->mtime.day,
+				pFnode->mtime.hour,
+				pFnode->mtime.minute,
+				pFnode->mtime.second
 			);
-			LogWrite("cluster_start : 0x%08X\n", pCacheList[i].cluster_start);
+			LogWrite("cluster_start : 0x%08X\n", pFnode->cluster_start);
 
-			if(pCacheList[i].data_0x20C->unk_B4 == 1){
-
-				if(pCacheList[i].cluster_start == 0){
-					LogWrite("entry offset : 0x%08X%08X [B]\n", 0, pCacheList[i].data_0x20C->rsvd_sector << 9);
+			if(pFnode->data_0x20C->unk_B4 == 1){
+				if(pFnode->cluster_start == 0){
+					LogWrite("entry offset : 0x%08X%08X [B]\n", 0, pFnode->data_0x20C->rsvd_sector << 9);
 				}else{
-					// TODO:fix this
-					uint32_t entry_sector = (pCacheList[i].data_0x20C->rsvd_sector + ((pCacheList[i].cluster_start - 2) << 3) + 0x20);
+					// TODO:fix this(cluster shift)
+					uint32_t entry_sector = (pFnode->data_0x20C->rsvd_sector + ((pFnode->cluster_start - 2) << 3) + 0x20);
 					LogWrite("entry offset : 0x%08X%08X [B]\n", entry_sector >> 23, entry_sector << 9);
 				}
 			}
@@ -486,6 +535,7 @@ int module_start(SceSize args, void *argp){
 	LogWrite("\n");
 	LogClose();
 
+	// dump SceExfatfs data segment
 	if(0){
 		void *pSceExfafsData;
 
@@ -493,7 +543,7 @@ int module_start(SceSize args, void *argp){
 		ksceKernelGetMemBlockBase(memid, &pSceExfafsData);
 
 		memcpy(pSceExfafsData, sce_info.segments[1].vaddr, sce_info.segments[1].memsz);
-		write_file("sd0:dump/SceExfatfs_data.bin", pSceExfafsData, sce_info.segments[1].memsz);
+		write_file("uma0:SceExfatfs_data.bin", pSceExfafsData, sce_info.segments[1].memsz);
 
 		ksceKernelFreeMemBlock(memid);
 	}
