@@ -8,6 +8,7 @@
 
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>
+#include <psp2kern/kernel/ssmgr.h>
 #include <psp2kern/io/fcntl.h>
 #include <stdio.h>
 #include <string.h>
@@ -29,8 +30,6 @@ int read_random_cb(DataPack_t *data, const void *args, void *pData, SceSize size
 
 	if(size > readable_byte)
 		size = readable_byte;
-
-#define ksceSblRngPseudoRandomNumber ksceKernelGetRandomNumber
 
 	ksceSblRngPseudoRandomNumber(pData, size);
 
