@@ -409,8 +409,6 @@ int module_start(SceSize args, void *argp){
 		}
 	}
 
-	// return 0;
-
 	memset(&sce_info, 0, sizeof(sce_info));
 	sce_info.size = sizeof(sce_info);
 	ksceKernelGetModuleInfo(0x10005, moduleid, &sce_info);
