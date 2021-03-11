@@ -10,11 +10,13 @@ Patch to allow debug version sce_pfs app mount and pkg install.
 
 Create host0 as a virtual device.
 
+On devkit, mount to `vsd0:`. but non-openable file. something is different in retails and devkit.
+
 The files that exist in "host0:kernel_modules/" and "host0:sysroot/" are RW.
 
 __Since SceVfsMountPoC is a PoC, there is nothing that guarantees its operation.__
 
-TODO : update createFileEntry and vfs_get_stat
+TODO : update createFileEntry and vfs_get_stat, support to devkit.
 
 # KernelCustomMalloc
 

@@ -9,6 +9,7 @@
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>
 #include <psp2kern/kernel/cpu.h>
+#include <psp2kern/sblaimgr.h>
 #include <psp2kern/io/devctl.h>
 #include <psp2kern/io/dirent.h>
 #include <psp2kern/io/fcntl.h>
@@ -131,6 +132,28 @@ const SceVfsMount vfs_mount = {
 	.data_0x1C = 0
 };
 
+const SceVfsMount2 vfs_mount2_devkit = {
+	.unit      = "vsd0:",
+	.device1   = "faps_dummy_host_fs",
+	.device2   = "faps_dummy_host_fs",
+	.data_0x0C = 0,
+	.data_0x10 = 0
+};
+/*
+	.data_0x08 = 0x10,
+	.data_0x0C = 0x6003,
+*/
+const SceVfsMount vfs_mount_devkit = {
+	.device    = "/md",
+	.data_0x04 = 0,
+	.data_0x08 = 0x03000010,
+	.data_0x0C = 0x00008003,
+	.data_0x10 = "faps_dummy_host_fs",
+	.data_0x14 = 0,
+	.data_0x18 = &vfs_mount2_devkit,
+	.data_0x1C = 0
+};
+
 const SceVfsUmount vfs_umount = {
 	.device = "/host",
 	.data_0x04 = 0
@@ -231,7 +254,7 @@ int sub_81000004(){
 
 int vfs_devctl(SceVfsDevctl *args){
 
-	if(strcmp(args->dev, "host0:") != 0)
+	if(strcmp(args->dev, "host0:") != 0 && strcmp(args->dev, "vsd0:") != 0)
 		return -1;
 
 	if(args->cmd == 0x3001 && args->outlen == sizeof(SceIoDevInfo)){
@@ -266,14 +289,16 @@ const SceVfsTable vfs_table_2 = {
 int vfs_open(SceVfsOpen *args){
 /*
 	ksceDebugPrintf("vfs_open\n");
-	ksceDebugPrintf("path  : %s\n", args->path_info->path);
+	ksceDebugPrintf("path      : %s\n", args->path_info->path);
 	ksceDebugPrintf("prev_node : 0x%X\n", args->node->prev_node);
-	ksceDebugPrintf("node  : 0x%X\n", args->node);
-	ksceDebugPrintf("flags : 0x%X\n", args->flags);
+	ksceDebugPrintf("node      : 0x%X\n", args->node);
+	ksceDebugPrintf("flags     : 0x%X\n", args->flags);
 */
 	DataPack_t *pDataPack = getFileEntryByNode(args->node->prev_node);
-	if(pDataPack == NULL)
-		return -1;
+	if(pDataPack == NULL){
+		ksceDebugPrintf("%s:not found to %s\n", __FUNCTION__, args->path_info->path);
+		return SCE_ERROR_ERRNO_ENOENT;
+	}
 
 	FileEntry *pDirEntry;
 	int res;
@@ -603,21 +628,40 @@ int module_start(SceSize args, void *argp){
 
 	init_l2_cache_reg();
 
-	ksceVfsUnmount(&vfs_umount);
+	if(ksceSblAimgrIsTool() == 0){
+		ksceVfsUnmount(&vfs_umount);
 
-	ksceVfsDeleteVfs("bsod_dummy_host_fs", NULL);
+		ksceVfsDeleteVfs("bsod_dummy_host_fs", NULL);
 
-	vfs_add.func_ptr1 = &vfs_table_2;
-	vfs_add.device    = "faps_dummy_host_fs";
-	vfs_add.data_0x08 = 0x11;
-	vfs_add.data_0x0C = 0;
-	vfs_add.data_0x10 = 0x10;
-	vfs_add.func_ptr2 = &vfs_table2_2;
-	vfs_add.data_0x18 = 0;
+		vfs_add.func_ptr1 = &vfs_table_2;
+		vfs_add.device    = "faps_dummy_host_fs";
+		vfs_add.data_0x08 = 0x11;
+		vfs_add.data_0x0C = 0;
+		vfs_add.data_0x10 = 0x10;
+		vfs_add.func_ptr2 = &vfs_table2_2;
+		vfs_add.data_0x18 = 0;
 
-	ksceVfsAddVfs(&vfs_add);
+		ksceVfsAddVfs(&vfs_add);
 
-	ksceVfsMount(&vfs_mount);
+		ksceVfsMount(&vfs_mount);
+	}else{
+		if(ksceSysrootIsManufacturingMode() != 0){
+			ksceDebugPrintf("This devkit already mounted sd0:\n");
+			return SCE_KERNEL_START_FAILED;
+		}
+
+		vfs_add.func_ptr1 = &vfs_table_2;
+		vfs_add.device    = "faps_dummy_host_fs";
+		vfs_add.data_0x08 = 0x11;
+		vfs_add.data_0x0C = 0;
+		vfs_add.data_0x10 = 0x10;
+		vfs_add.func_ptr2 = &vfs_table2_2;
+		vfs_add.data_0x18 = 0;
+
+		ksceVfsAddVfs(&vfs_add);
+
+		ksceVfsMount(&vfs_mount_devkit);
+	}
 
 	return SCE_KERNEL_START_SUCCESS;
 }

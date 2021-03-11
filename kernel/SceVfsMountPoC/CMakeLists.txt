@@ -37,6 +37,7 @@ target_link_libraries(SceVfsMountPoC
   SceDebugForDriver_stub
   SceIofilemgrForDriver_stub
   SceSysclibForDriver_stub
+  SceSblAIMgrForDriver_stub
   SceSblSsMgrForDriver_stub
   SceSysmemForDriver_stub
   SceModulemgrForDriver_stub
