@@ -46,6 +46,10 @@ To view the kpanic log, you need Princess Log or an equivalent logger.
 
 Currently there is no more functionality.
 
+# qaf_host0
+
+Allow host0: access from module load etc.
+
 # syscon_vs_dumper
 
 Dumper for syscon vs storage.
