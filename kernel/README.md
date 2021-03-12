@@ -57,3 +57,6 @@ Allow host0: access from module load etc.
 Dumper for syscon vs storage.
 
 vs storage includes resume context address, rtc tick, dipsw, etc.
+
+# kblparam_dumper
+Dumper for SceKblParam(old name is sysroot).
