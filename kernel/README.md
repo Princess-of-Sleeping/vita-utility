@@ -58,5 +58,10 @@ Dumper for syscon vs storage.
 
 vs storage includes resume context address, rtc tick, dipsw, etc.
 
+# idstorage_dumper
+
+Dumper for idstorage.
+
 # kblparam_dumper
+
 Dumper for SceKblParam(old name is sysroot).
