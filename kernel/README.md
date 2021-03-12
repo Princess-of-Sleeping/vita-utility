@@ -52,6 +52,10 @@ Currently there is no more functionality.
 
 Allow host0: access from module load etc.
 
+# nvs_dumper
+
+Dumper for syscon non-volatile storage.
+
 # syscon_vs_dumper
 
 Dumper for syscon vs storage.
