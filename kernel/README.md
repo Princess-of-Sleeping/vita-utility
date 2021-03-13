@@ -52,6 +52,10 @@ Currently there is no more functionality.
 
 Allow host0: access from module load etc.
 
+# mac_address_spoofer
+
+A PS Vita Mac address spoofer on kernel level working.
+
 # nvs_dumper
 
 Dumper for syscon non-volatile storage.
