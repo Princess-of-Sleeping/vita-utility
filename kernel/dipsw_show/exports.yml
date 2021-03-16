@@ -1,0 +1,7 @@
+dipsw_show:
+  attributes: 0
+  version:
+    major: 0x1
+    minor: 0x0
+  main:
+    start: module_start

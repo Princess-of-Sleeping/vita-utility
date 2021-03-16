@@ -32,6 +32,10 @@ The Corelock Sample.
 
 Verify DevKit/TestingKit activation file.
 
+# dipsw_show
+
+Show current dipsw on tty.
+
 # map_user_memblk_by_paddr
 
 Mapping userland memory block by any paddr.
