@@ -40,6 +40,8 @@ Show current dipsw on tty.
 
 Disable suspend.
 
+note : The screen goes off, but it doesn't suspend completely.
+
 # map_user_memblk_by_paddr
 
 Mapping userland memory block by any paddr.
