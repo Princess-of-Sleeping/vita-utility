@@ -36,6 +36,10 @@ Verify DevKit/TestingKit activation file.
 
 Show current dipsw on tty.
 
+# noSuspend
+
+Disable suspend.
+
 # map_user_memblk_by_paddr
 
 Mapping userland memory block by any paddr.
