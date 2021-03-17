@@ -40,7 +40,11 @@ Show current dipsw on tty.
 
 Disable suspend.
 
-note : The screen goes off, but it doesn't suspend completely.
+note
+
+The screen goes off, but it doesn't suspend completely.
+
+But ftp connection is not available with the screen off.
 
 # map_user_memblk_by_paddr
 
