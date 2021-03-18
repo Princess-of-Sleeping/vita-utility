@@ -18,6 +18,10 @@ __Since SceVfsMountPoC is a PoC, there is nothing that guarantees its operation.
 
 TODO : update createFileEntry and vfs_get_stat, support to devkit.
 
+# SceZlibSample
+
+Kernel zlib usage sample.
+
 # KernelCustomMalloc
 
 Malloc with custom memory base
