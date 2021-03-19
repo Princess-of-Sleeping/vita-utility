@@ -6,6 +6,10 @@ Sample of how to map vaddr from paddr
 
 Patch to allow debug version sce_pfs app mount and pkg install. 
 
+# SceUsbstorVstorFat16
+
+Supports FAT16 with usb connection.
+
 # SceVfsMountPoC
 
 Create host0 as a virtual device.
