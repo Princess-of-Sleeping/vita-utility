@@ -39,4 +39,4 @@ vita_create_self(${SELF_NAME}.skprx ${PROJECT_NAME}
   UNSAFE
 )
 
-vita_create_stubs(stubs_${PROJECT_NAME} ${PROJECT_NAME} ${CMAKE_SOURCE_DIR}/exports.yml KERNEL)
+vita_create_stubs(stubs_${PROJECT_NAME} ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/exports.yml KERNEL)
