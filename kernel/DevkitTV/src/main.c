@@ -17,6 +17,7 @@ int ksceOledDisplayOn(void);
 const char *const hdmi_msg[] = {"HDMI disconnection", "HDMI connected"};
 
 int (* sceHdmiGetState)(int *state);
+void (* scePowerDimmingCallback)(int a1, int a2, int a3);
 
 int update_screen_with_state(int state){
 
@@ -24,6 +25,8 @@ int update_screen_with_state(int state){
 
 	if(state == 0){
 		res = ksceOledDisplayOn();
+		if(res >= 0)
+			scePowerDimmingCallback(1, 0, 0);
 	}else{
 		res = ksceOledDisplayOff();
 	}
@@ -68,6 +71,27 @@ int screen_update_thread(SceSize args, void *argp){
 	return 0;
 }
 
+void scePowerDimmingCallbackHook(int a1, int a2, int a3){
+
+	int res, state;
+
+	res = sceHdmiGetState(&state);
+	if(res < 0){
+		ksceDebugPrintf("Failed sceHdmiGetState\n");
+		return;
+	}
+
+	if(a1 == 1 && state == 0){
+		scePowerDimmingCallback(a1, a2, a3);
+	}
+}
+
+typedef void (* ScePowerIdleCallback)(int a1, int a2, int a3);
+
+int kscePowerSetIdleCallback(int a1, int inhibit_reset, SceUInt64 time, ScePowerIdleCallback cb, int a6);
+
+#define HookImport(module_name, library_nid, func_nid, func_name) \
+	taiHookFunctionImportForKernel(0x10005, &func_name ## _ref, module_name, library_nid, func_nid, func_name ## _patch)
 #define HookOffset(modid, offset, thumb, func_name) \
 	taiHookFunctionOffsetForKernel(0x10005, &func_name ## _ref, modid, 0, offset, thumb, func_name ## _patch)
 
@@ -78,7 +102,25 @@ int module_start(SceSize args, void *argp){
 
 	int res;
 
-	SceUID module_id = ksceKernelSearchModuleByName("SceHdmi");
+	SceUID module_id;
+
+	module_id = ksceKernelSearchModuleByName("ScePower");
+	if(module_id < 0){
+		ksceDebugPrintf("Failed found %s\n", "ScePower");
+		return SCE_KERNEL_START_FAILED;
+	}
+
+	res = module_get_offset(0x10005, module_id, 0, 0x667C | 1, (uintptr_t *)&scePowerDimmingCallback);
+	if(res < 0){
+		ksceDebugPrintf("Failed get scePowerDimmingCallback\n");
+		return SCE_KERNEL_START_FAILED;
+	}
+
+	module_id = ksceKernelSearchModuleByName("SceHdmi");
+	if(module_id < 0){
+		ksceDebugPrintf("Failed found %s\n", "SceHdmi");
+		return SCE_KERNEL_START_FAILED;
+	}
 
 	res = module_get_offset(0x10005, module_id, 0, 0x5234 | 1, (uintptr_t *)&sceHdmiGetState);
 	if(res < 0){
@@ -103,6 +145,9 @@ int module_start(SceSize args, void *argp){
 	}
 
 	HookOffset(module_id, 0x5250, 1, sceHdmiSetState);
+
+	kscePowerSetIdleCallback(1, 0, 0LL, NULL, 0); // clear
+	kscePowerSetIdleCallback(1, 0x400, 45000000, scePowerDimmingCallbackHook, 0);
 
 	return SCE_KERNEL_START_SUCCESS;
 }
