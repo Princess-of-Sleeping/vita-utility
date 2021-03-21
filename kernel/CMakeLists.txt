@@ -12,6 +12,7 @@ project(vita-utility-kernel)
 
 add_subdirectory(act_verifier)
 add_subdirectory(CorelockSample)
+add_subdirectory(DevkitTV)
 add_subdirectory(KernelCustomMalloc)
 add_subdirectory(kpanic_debug)
 add_subdirectory(MappingVaddrSample)
