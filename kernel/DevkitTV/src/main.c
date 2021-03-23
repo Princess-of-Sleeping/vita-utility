@@ -86,6 +86,25 @@ void scePowerDimmingCallbackHook(int a1, int a2, int a3){
 	}
 }
 
+int screen_workqueue(void *args){
+
+	// When resume from suspend, the screen of the vita body will turn on, so wait for a while and then turn off the screen.
+	ksceKernelDelayThread(1000000);
+	update_screen();
+
+	return 0;
+}
+
+tai_hook_ref_t ksceCtrlUpdateMaskForAll_ref;
+int ksceCtrlUpdateMaskForAll_patch(int clear_mask, int set_mask){
+
+	if(set_mask != 0){ // resume
+		ksceKernelEnqueueWorkQueue(0x10023, "NoSuspendQueue", screen_workqueue, NULL);
+	}
+
+	return TAI_CONTINUE(int, ksceCtrlUpdateMaskForAll_ref, clear_mask, set_mask);
+}
+
 typedef void (* ScePowerIdleCallback)(int a1, int a2, int a3);
 
 int kscePowerSetIdleCallback(int a1, int inhibit_reset, SceUInt64 time, ScePowerIdleCallback cb, int a6);
@@ -101,7 +120,6 @@ void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
 
 	int res;
-
 	SceUID module_id;
 
 	module_id = ksceKernelSearchModuleByName("ScePower");
@@ -144,6 +162,7 @@ int module_start(SceSize args, void *argp){
 		update_screen();
 	}
 
+	HookImport("ScePower", 0x7823A5D1, 0x12C13A72, ksceCtrlUpdateMaskForAll);
 	HookOffset(module_id, 0x5250, 1, sceHdmiSetState);
 
 	kscePowerSetIdleCallback(1, 0, 0LL, NULL, 0); // clear
