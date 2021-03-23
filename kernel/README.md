@@ -67,6 +67,16 @@ The screen goes off, but it doesn't suspend completely.
 
 But ftp connection is not available with the screen off.
 
+# noSuspendMini
+
+Disable suspend.
+
+note
+
+The screen goes off, but it doesn't suspend completely.
+
+Ftp connection is available with the screen off.
+
 # map_user_memblk_by_paddr
 
 Mapping userland memory block by any paddr.
