@@ -7,10 +7,6 @@ HDMI connected     -> screen off
 HDMI disconnection -> screen on
 ```
 
-Known bug
-
-There is a bug that the screen turns on without permission.
-
 # MappingVaddrSample
 
 Sample of how to map vaddr from paddr

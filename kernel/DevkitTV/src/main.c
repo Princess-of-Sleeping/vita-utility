@@ -98,8 +98,12 @@ int screen_workqueue(void *args){
 tai_hook_ref_t ksceCtrlUpdateMaskForAll_ref;
 int ksceCtrlUpdateMaskForAll_patch(int clear_mask, int set_mask){
 
-	if(set_mask != 0){ // resume
-		ksceKernelEnqueueWorkQueue(0x10023, "NoSuspendQueue", screen_workqueue, NULL);
+	int res, state;
+
+	res = sceHdmiGetState(&state);
+
+	if(res >= 0 && state != 0 && set_mask != 0){ // resume
+		ksceKernelEnqueueWorkQueue(0x10023, "ScreenUpdateQueue", screen_workqueue, NULL);
 	}
 
 	return TAI_CONTINUE(int, ksceCtrlUpdateMaskForAll_ref, clear_mask, set_mask);
