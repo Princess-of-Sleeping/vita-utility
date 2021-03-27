@@ -8,7 +8,8 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   endif()
 endif()
 
-project(vita-utility-paf-custom-malloc)
+project(ScePafMalloc)
+set(SELF_NAME "paf_malloc")
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 set(VITA_APP_NAME "vita-utility paf custom malloc")
@@ -32,11 +33,11 @@ target_link_libraries(${PROJECT_NAME}
   SceSysmodule_stub
 )
 
-vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME}
+vita_create_self(${SELF_NAME}.self ${PROJECT_NAME}
   UNSAFE
 )
 
-vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
+vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${SELF_NAME}.self
   VERSION ${VITA_VERSION}
   NAME ${VITA_APP_NAME}
 )

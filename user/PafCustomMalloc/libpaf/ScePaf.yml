@@ -15,4 +15,4 @@ modules:
         kernel: false
         nid: 0xA7D28DAE
         functions:
-          scePafFree: 0x347AFDD9
+          sce_paf_private_free: 0x1B77082E
