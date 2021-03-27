@@ -11,6 +11,10 @@ HDMI disconnection -> screen on
 
 Sample of how to map vaddr from paddr
 
+# SceErrorHelper
+
+Popup error dialog strings code to hex.
+
 # ScePfsMgrAllowDbgPfsPatch
 
 Patch to allow debug version sce_pfs app mount and pkg install. 
