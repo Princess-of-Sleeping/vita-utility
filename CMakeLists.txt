@@ -10,5 +10,6 @@ endif()
 
 project(vita-utility)
 
+add_subdirectory(tzs)
 add_subdirectory(kernel)
 add_subdirectory(user)
