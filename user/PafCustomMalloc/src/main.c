@@ -58,7 +58,7 @@ int main(int argc, char *argv[]){
 	}
 
 	for(int i=0;i<(sizeof(list) / sizeof(SceSize));i++){
-		sce_paf_private_free(ptr_list[i]);
+		scePafFreeWithInfo(&heap_info, ptr_list[i]);
 		ptr_list[i] = NULL;
 	}
 

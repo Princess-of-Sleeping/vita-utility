@@ -11,8 +11,4 @@ modules:
           scePafHeapInit: 0xA2B0BF4D
           scePafHeapFini: 0x25238A3A
           scePafMallocWithInfo: 0x89A1CE78
-      ScePafStdc:
-        kernel: false
-        nid: 0xA7D28DAE
-        functions:
-          sce_paf_private_free: 0x1B77082E
+          scePafFreeWithInfo: 0xCE97B579

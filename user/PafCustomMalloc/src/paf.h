@@ -43,6 +43,7 @@ ScePafHeapInfo *scePafHeapInit(ScePafHeapInfo *pInfo, void *membase, SceSize siz
 ScePafHeapInfo *scePafHeapFini(ScePafHeapInfo *pInfo);
 
 void *scePafMallocWithInfo(ScePafHeapInfo *pInfo, SceSize len);
+void scePafFreeWithInfo(ScePafHeapInfo *info, void *ptr);
 
 #ifdef __cplusplus
 }
