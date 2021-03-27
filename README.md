@@ -1,5 +1,9 @@
 # vita-utility
 
+## tzs
+
+vita-utility for TrustZone
+
 ## kernel
 
 vita-utility for kernel
