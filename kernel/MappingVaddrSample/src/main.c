@@ -37,11 +37,30 @@ void *pa2va(unsigned int pa){
  *
  * size must be a multiple of 0x100000
  */
-int (* mapping_vaddr_by_paddr)(void *ttbr0, int memtype, int domain, const void *vaddr, SceSize size, unsigned int paddr) = NULL;
+int (* mapping_vaddr_by_paddr)(void *ttbr, int memtype, int domain, const void *vaddr, SceSize size, unsigned int paddr) = NULL;
 
 int ksceKernelCpuDcacheCleanInvalidateMVAC(void *a1);
 
 int module_get_offset(SceUID pid, SceUID modid, int segidx, uint32_t offset, uintptr_t *dst);
+
+unsigned int *pTTBR0, *pTTBR1;
+
+int map_vaddr(int memtype, int domain, uintptr_t vaddr, SceSize size, uintptr_t paddr){
+
+	unsigned int *pTTBR;
+
+	if(vaddr < 0x40000000){
+		pTTBR = pTTBR0;
+	}else{
+		pTTBR = pTTBR1;
+	}
+
+	mapping_vaddr_by_paddr(pTTBR, memtype, domain, (const void *)vaddr, size, paddr);
+
+	ksceKernelCpuDcacheCleanInvalidateMVAC(&pTTBR[(vaddr >> 20) & 0xFFF]);
+
+	return 0;
+}
 
 void _start() __attribute__ ((weak, alias ("module_start")));
 int module_start(SceSize argc, const void *args){
@@ -49,40 +68,43 @@ int module_start(SceSize argc, const void *args){
 	tai_module_info_t tai_info;
 	tai_info.size = sizeof(tai_module_info_t);
 
-	if(taiGetModuleInfoForKernel(KERNEL_PID, "SceSysmem", &tai_info) < 0){
+	if(taiGetModuleInfoForKernel(0x10005, "SceSysmem", &tai_info) < 0){
 		ksceDebugPrintf("taiGetModuleInfoForKernel failed\n");
 		return SCE_KERNEL_START_SUCCESS;
 	}
 
-	module_get_offset(KERNEL_PID, tai_info.modid, 0, 0x2364C | 1, (uintptr_t *)&mapping_vaddr_by_paddr);
+	module_get_offset(0x10005, tai_info.modid, 0, 0x2364C | 1, (uintptr_t *)&mapping_vaddr_by_paddr);
 
-	unsigned int ttbr0;
-	unsigned int *tbl = NULL;
+	unsigned int ttbr0, ttbr1;
 
 	__asm__ volatile(
 		"mrc p15, #0, %0, c2, c0, #0\n"
-		: "=r"(ttbr0)
+		"mrc p15, #0, %1, c2, c0, #1\n"
+		: "=r"(ttbr0), "=r"(ttbr1)
 	);
 
 	ttbr0 &= ~0xFFF;
+	ttbr1 &= ~0xFFF;
 
-	tbl = pa2va(ttbr0);
+	pTTBR0 = pa2va(ttbr0);
+	pTTBR1 = pa2va(ttbr1);
 
-	ksceDebugPrintf("ttbr0 : 0x%X(0x%X)\n", ttbr0, tbl); // ttbr0 : 0x40208000(0x78000)
+	ksceDebugPrintf("ttbr0 : 0x%X\n", ttbr0);
+	ksceDebugPrintf("ttbr1 : 0x%X\n", ttbr1);
 
-	mapping_vaddr_by_paddr(tbl, 0x10200206, 0xC, (const void *)0x3F000000, 0x100000, 0x51000000);
+	map_vaddr(0x10200206, 0xC, 0x51000000, 0x100000, 0x51000000);
 
-	ksceKernelCpuDcacheCleanInvalidateMVAC(&tbl[0x3F0]);
+	SceUID fd;
 
-	SceUID fd = ksceIoOpen("sd0:nskbl_dump.bin", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0666);
-	if(fd > 0){
-		ksceIoWrite(fd, (void *)0x3F000000, 0x100000);
+	fd = ksceIoOpen("host0:nskbl_dump.bin", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0666);
+	if(fd < 0)
+		fd = ksceIoOpen("sd0:nskbl_dump.bin", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0666);
+	if(fd < 0)
+		fd = ksceIoOpen("ux0:nskbl_dump.bin", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0666);
+	if(fd >= 0){
+		ksceIoWrite(fd, (void *)0x51000000, 0x100000);
 		ksceIoClose(fd);
 	}
 
-	return SCE_KERNEL_START_SUCCESS;
-}
-
-int module_stop(SceSize argc, const void *args){
-	return SCE_KERNEL_STOP_SUCCESS;
+	return SCE_KERNEL_START_NO_RESIDENT;
 }
