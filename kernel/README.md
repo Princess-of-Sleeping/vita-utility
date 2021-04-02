@@ -109,6 +109,13 @@ A PS Vita Mac address spoofer on kernel level working.
 
 Dumper for syscon non-volatile storage.
 
+
+# slb2_dumper
+
+Dumper for Secure loader bank.
+
+But secure loader bank is guessed name.
+
 # syscon_vs_dumper
 
 Dumper for syscon vs storage.
