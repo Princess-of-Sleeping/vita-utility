@@ -7,3 +7,7 @@ Malloc with custom memory base
 This application remounts os0:, vs0: with RW.
 
 **Warning: Do not download and run this application unless you know what you are doing.**
+
+# kernel_module_loader
+
+The Kernel Module Loader

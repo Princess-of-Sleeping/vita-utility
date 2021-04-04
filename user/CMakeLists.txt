@@ -12,3 +12,4 @@ project(vita-utility-user)
 
 add_subdirectory(PafCustomMalloc)
 add_subdirectory(SceSysRw)
+add_subdirectory(kernel_module_loader)
