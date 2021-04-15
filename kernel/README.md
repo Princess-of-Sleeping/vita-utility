@@ -109,7 +109,6 @@ A PS Vita Mac address spoofer on kernel level working.
 
 Dumper for syscon non-volatile storage.
 
-
 # slb2_dumper
 
 Dumper for Secure loader bank.
@@ -125,6 +124,10 @@ vs storage includes resume context address, rtc tick, dipsw, etc.
 # idstorage_dumper
 
 Dumper for idstorage.
+
+# idstorage_raw_dumper
+
+Dumper for idstorage raw(partition level).
 
 # kblparam_dumper
 
