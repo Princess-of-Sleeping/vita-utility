@@ -44,7 +44,7 @@ typedef struct ScePartitionEntrie { // size is 0x11
 typedef struct SceSdstorPartInfo { // size is 0x1C
 	void *data_0x00; // pointer to SceSdstor_data + 0xA40
 	ScePartitionEntrie *data_0x04;
-	char id[4];
+	char id[4]; // maybe this : https://wiki.henkaku.xyz/vita/SceIofilemgr#Partition_Block_Devices
 	int flags;
 	int unk_0x10;
 	uint32_t start_lba;
