@@ -54,7 +54,18 @@ int main(int argc, char *argv[]){
 
 	for(int i=0;i<(sizeof(list) / sizeof(SceSize));i++){
 		ptr_list[i] = scePafMallocWithInfo(&heap_info, list[i]);
+
+		ptr_list[i] = scePafReallocWithInfo(&heap_info, ptr_list[i], list[i] + 0x123);
+
 		sceClibPrintf("malloc test    : 0x%08X/0x%X\n", ptr_list[i], list[i]);
+
+		scePafFreeWithInfo(&heap_info, ptr_list[i]);
+
+
+
+		ptr_list[i] = scePafMallocAlignWithInfo(&heap_info, 0x400, list[i]);
+
+		sceClibPrintf("malloc test    : 0x%08X/0x%X(with align)\n", ptr_list[i], list[i]);
 	}
 
 	for(int i=0;i<(sizeof(list) / sizeof(SceSize));i++){

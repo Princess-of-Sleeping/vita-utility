@@ -45,6 +45,10 @@ ScePafHeapInfo *scePafHeapFini(ScePafHeapInfo *pInfo);
 void *scePafMallocWithInfo(ScePafHeapInfo *pInfo, SceSize len);
 void scePafFreeWithInfo(ScePafHeapInfo *info, void *ptr);
 
+void *scePafReallocWithInfo(ScePafHeapInfo *pInfo, void *ptr, SceSize len);
+
+void *scePafMallocAlignWithInfo(ScePafHeapInfo *pInfo, SceUInt32 align, SceSize len);
+
 #ifdef __cplusplus
 }
 #endif

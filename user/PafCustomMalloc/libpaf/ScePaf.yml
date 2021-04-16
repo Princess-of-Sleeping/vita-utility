@@ -12,3 +12,5 @@ modules:
           scePafHeapFini: 0x25238A3A
           scePafMallocWithInfo: 0x89A1CE78
           scePafFreeWithInfo: 0xCE97B579
+          scePafReallocWithInfo: 0x74DB7F5D
+          scePafMallocAlignWithInfo: 0x04716F15
