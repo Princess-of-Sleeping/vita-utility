@@ -9,6 +9,7 @@
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/threadmgr.h>
 #include <psp2kern/kernel/sysclib.h>
+#include <psp2kern/io/fcntl.h>
 #include <taihen.h>
 
 #define HookExport(module_name, library_nid, func_nid, func_name) \
@@ -35,6 +36,8 @@ typedef struct SceNetPsDeviceConfig { // maybe size is variable, max 0x5DC?
 	// more...
 } SceNetPsDeviceConfig;
 
+char mac_address[6];
+
 int clear_netps_mac_address(void){
 
 	SceUID moduleid = ksceKernelSearchModuleByName("SceNetPs");
@@ -48,7 +51,7 @@ int clear_netps_mac_address(void){
 
 	while(pDeviceConfig != NULL){
 		if(pDeviceConfig->data_0x38 != 0x17 && pDeviceConfig->data_0x38 != 0x18 && strncmp(pDeviceConfig->device, "wlan", 4) == 0){
-			memset((*(void **)pDeviceConfig->data_0x00) + 0x5C, 0, 6);
+			memcpy((*(void **)pDeviceConfig->data_0x00) + 0x5C, mac_address, 6);
 			break;
 		}
 
@@ -62,13 +65,37 @@ tai_hook_ref_t SceNetPsForDriver_1ABF937D_ref;
 int SceNetPsForDriver_1ABF937D_patch(void *pConfig){
 
 	if(pConfig != NULL)
-		memset(pConfig + 0x5C, 0xAA, 6);
+		memcpy(pConfig + 0x5C, mac_address, 6);
 
 	return TAI_CONTINUE(int, SceNetPsForDriver_1ABF937D_ref, pConfig);
 }
 
+int load_mac_address(void *dst, SceSize size){
+
+	SceUID fd;
+
+	fd = ksceIoOpen("host0:data/spoof/mac_address.bin", SCE_O_RDONLY, 0);
+	if(fd < 0)
+		fd = ksceIoOpen("sd0:data/spoof/mac_address.bin", SCE_O_RDONLY, 0);
+	if(fd < 0)
+		fd = ksceIoOpen("ux0:data/spoof/mac_address.bin", SCE_O_RDONLY, 0);
+	if(fd < 0)
+		return fd;
+
+	ksceIoRead(fd, dst, size);
+	ksceIoClose(fd);
+
+	return 0;
+}
+
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
+
+	int res;
+
+	res = load_mac_address(mac_address, sizeof(mac_address));
+	if(res < 0)
+		memset(mac_address, 0xA5, sizeof(mac_address));
 
 	if(ksceKernelSearchModuleByName("SceWlanBt") >= 0){
 		// Add delay only boot time.

@@ -24,6 +24,7 @@ target_link_libraries(mac_address_spoofer
   SceSysclibForDriver_stub
   SceModulemgrForDriver_stub
   SceThreadmgrForDriver_stub
+  SceIofilemgrForDriver_stub
   taihenForKernel_stub
   taihenModuleUtils_stub
 )
