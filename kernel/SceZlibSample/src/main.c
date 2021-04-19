@@ -75,11 +75,6 @@ void my_zlib_free(void *args, void *ptr){
 char working_buffer[0x10000];
 char zlib_buf[0x2000];
 
-typedef enum SceKernelHeapAttr {
-	SCE_KERNEL_HEAP_ATTR_HAS_AUTO_EXTEND = 0x00000001,
-	SCE_KERNEL_HEAP_ATTR_HAS_MEMORY_TYPE = 0x00000400
-} SceKernelHeapAttr;
-
 // Can you gzip open by 7z.
 #define SCE_ZLIB_OUTPUT_GZIP (1)
 
@@ -94,10 +89,10 @@ int zlib_test(void){
 
 	SceKernelHeapCreateOpt heap_opt;
 	memset(&heap_opt, 0, sizeof(heap_opt));
-	heap_opt.size     = sizeof(heap_opt);
-	heap_opt.uselock  = SCE_KERNEL_HEAP_ATTR_HAS_AUTO_EXTEND | SCE_KERNEL_HEAP_ATTR_HAS_MEMORY_TYPE;
-	// heap_opt.field_10 = 0x10F0D006;
-	heap_opt.field_10 = 0x1020D006;
+	heap_opt.size = sizeof(heap_opt);
+	heap_opt.attr = SCE_KERNEL_HEAP_ATTR_HAS_AUTO_EXTEND | SCE_KERNEL_HEAP_ATTR_HAS_MEMORY_TYPE;
+	// heap_opt.memtype = 0x10F0D006;
+	heap_opt.memtype = 0x1020D006;
 
 	heapid = ksceKernelCreateHeap("SceZlibSampleHeap", 0x2000, &heap_opt);
 	if(heapid < 0){
@@ -196,9 +191,9 @@ int zlib_test_file(void){
 
 	SceKernelHeapCreateOpt heap_opt;
 	memset(&heap_opt, 0, sizeof(heap_opt));
-	heap_opt.size     = sizeof(heap_opt);
-	heap_opt.uselock  = SCE_KERNEL_HEAP_ATTR_HAS_AUTO_EXTEND | SCE_KERNEL_HEAP_ATTR_HAS_MEMORY_TYPE;
-	heap_opt.field_10 = 0x10F0D006;
+	heap_opt.size    = sizeof(heap_opt);
+	heap_opt.attr    = SCE_KERNEL_HEAP_ATTR_HAS_AUTO_EXTEND | SCE_KERNEL_HEAP_ATTR_HAS_MEMORY_TYPE;
+	heap_opt.memtype = 0x10F0D006;
 
 	heapid = ksceKernelCreateHeap("SceZlibSampleHeap", 0x2000, &heap_opt);
 	if(heapid < 0){
