@@ -53,6 +53,10 @@ The Corelock Sample.
 
 Verify DevKit/TestingKit activation file.
 
+# np_act_verifier
+
+Verify SceNpDrm activation file.
+
 # dipsw_show
 
 Show current dipsw on tty.
