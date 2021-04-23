@@ -106,8 +106,15 @@ int aes_dec(void *data, SceSize size, const void *key){
 	return res;
 }
 
+typedef struct SceNpDrmEcdsaParam { // size is 0xC
+	void *hash;
+	void *sign;
+	int type;
+} SceNpDrmEcdsaParam;
+
 int actVerifierMain(SceSize args, void *argp){
 
+	int (* sceNpDrmEcdsaVerify)(SceNpDrmEcdsaParam *pParam);
 	int (* sceNpDrmRsaModPower)(void *dst, const void *src, SceNpDrmRsaKey *pParam, int size);
 	int res;
 
@@ -123,9 +130,24 @@ int actVerifierMain(SceSize args, void *argp){
 	if(res < 0)
 		return res;
 
+	res = module_get_offset(0x10005, SceNpDrm_moduleid, 0, 0xA024 | 1, (uintptr_t *)&sceNpDrmEcdsaVerify);
+	if(res < 0)
+		return res;
+
 	res = actVerifierReadActData();
 	if(res < 0)
 		return res;
+
+	char hash_sha1[0x14];
+	ksceSha1Digest(act_data, 0x1010, hash_sha1);
+
+	SceNpDrmEcdsaParam ecdsa_param;
+	ecdsa_param.hash = hash_sha1;
+	ecdsa_param.sign = act_data + 0x1010;
+	ecdsa_param.type = 0;
+
+	res = sceNpDrmEcdsaVerify(&ecdsa_param);
+	ksceDebugPrintf("sceNpDrmEcdsaVerify:0x%X\n", res);
 
 	const void *act_aes_key = NULL;
 	const void *act_rsa_n = NULL;
