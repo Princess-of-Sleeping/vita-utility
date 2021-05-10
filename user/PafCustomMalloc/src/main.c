@@ -11,12 +11,6 @@
 #include <psp2/sysmodule.h>
 #include "paf.h"
 
-typedef struct SceSysmoduleOpt {
-	int flags;
-	int *result;
-	int unused[2];
-} SceSysmoduleOpt;
-
 char test_heap[0x2000] __attribute__((aligned(0x20)));
 
 int main(int argc, char *argv[]){
