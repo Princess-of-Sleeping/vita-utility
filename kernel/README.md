@@ -131,8 +131,12 @@ Dumper for idstorage.
 
 # idstorage_raw_dumper
 
-Dumper for idstorage raw(partition level).
+Dumper for idstorage raw (partition level).
 
 # kblparam_dumper
 
-Dumper for SceKblParam(old name is sysroot).
+Dumper for SceKblParam (old name is sysroot).
+
+# visible_id_dumper
+
+Dumper for Visible id (like console id).
