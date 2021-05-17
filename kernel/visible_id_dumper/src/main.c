@@ -77,13 +77,24 @@ int i(void *args){
 	if(res < 0 && (res = ksceIoGetstat(dir, &stat)) < 0)
 		dir = "ux0:";
 
-	if(res >= 0){
-		char path[0x100];
-		snprintf(path, sizeof(path), "%s/visible_id.bin", dir);
+	if(res < 0)
+		res = ksceIoGetstat(dir, &stat);
 
+	if(res >= 0){
 		SceVisibleId visible_id;
 		memset(&visible_id, 0, sizeof(visible_id));
 		ksceSblAimgrGetVisibleId(&visible_id);
+
+		char path[0x100];
+		snprintf(
+			path, sizeof(path), "%s/visible_id_%02X%02X%02X%02X.bin",
+			dir, visible_id.data[0x1C], visible_id.data[0x1D], visible_id.data[0x1E], visible_id.data[0x1F]
+		);
+
+		if(ksceIoGetstat(path, &stat) >= 0){
+			ksceDebugPrintf("Already visible_id is dumped. You want to re dump visible_id, Remove %s\n", path);
+			return 0;
+		}
 
 		write_file(path, &visible_id, sizeof(visible_id));
 	}
