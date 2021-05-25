@@ -13,7 +13,7 @@ Sample of how to map vaddr from paddr
 
 # SceDeci4pRDrfpUnlimited
 
-Unlimited SceDeci4pRDrfp control patch.
+Unlimited SceDeci4pRDrfp io file control patch.
 
 For example, Can access to vs0: from host psp2ctrl commands.
 

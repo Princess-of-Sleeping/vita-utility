@@ -1,5 +1,5 @@
 /*
- * Unlimited SceDeci4pRDrfp control patch
+ * Unlimited SceDeci4pRDrfp io file control patch
  * Copyright (C) 2021 Princess of Sleeping
  */
 
