@@ -23,8 +23,6 @@ add_executable(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
   SceModulemgrForDriver_stub
-  SceThreadmgrForDriver_stub
-  SceDebugForDriver_stub
   taihenForKernel_stub
 )
 
