@@ -23,6 +23,12 @@ add_executable(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   SceAppMgr_stub
   SceKernelThreadMgr_stub
+  SceSysmodule_stub
+  ScePaf_stub
+  SceLibKernel_stub
+  SceIofilemgr_stub
+  SceProcessmgr_stub
+  SceVshBridge_stub
   taihen_stub
 )
 
