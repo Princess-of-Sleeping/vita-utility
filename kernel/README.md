@@ -21,6 +21,12 @@ For example, Can access to vs0: from host psp2ctrl commands.
 
 Popup error dialog strings code to hex.
 
+# SceHwbkptTest
+
+Settings hardware break point on thread.
+
+In the sample, set bkpt immediately after starting the application NPXS10015 (Settings).
+
 # ScePfsMgrAllowDbgPfsPatch
 
 Patch to allow debug version sce_pfs app mount and pkg install. 
