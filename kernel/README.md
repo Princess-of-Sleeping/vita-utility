@@ -23,9 +23,15 @@ Popup error dialog strings code to hex.
 
 # SceHwbkptTest
 
-Settings hardware break point on thread.
+Settings hardware break point on thread and process.
 
-In the sample, set bkpt immediately after starting the application NPXS10015 (Settings).
+In the sample, the following code is executed in the application NPXS10015 (Settings).
+
+```
+Normal            : Opening to "Error history", trigger hardware break point.
+If pressed start  : If called sceSettingsMain (SceSettings_text + 0x110), trigger hardware break point.
+If pressed select : If access to settings_type variable (SceSettings_data + 0x3C), trigger hardware watch point.
+```
 
 # ScePfsMgrAllowDbgPfsPatch
 
