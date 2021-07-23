@@ -1,0 +1,7 @@
+sysmem_print_guid_info:
+  attributes: 7
+  version:
+    major: 1
+    minor: 1
+  main:
+    start: module_start
