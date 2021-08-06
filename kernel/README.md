@@ -155,6 +155,10 @@ Dumper for idstorage raw (partition level).
 
 Dumper for SceKblParam (old name is sysroot).
 
+# update_sw_list
+
+update_mgr testing stuff
+
 # visible_id_dumper
 
 Dumper for Visible id (like console id).
