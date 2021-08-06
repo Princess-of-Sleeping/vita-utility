@@ -11,8 +11,8 @@
 #include <psp2kern/kernel/debug.h>
 
 typedef struct SceSblUsSwPscode { // size is 0xC-bytes
-	SceUInt16 product_code_upper;
-	SceUInt16 product_code_lower;
+	SceUInt16 product_code_upper; // or lower
+	SceUInt16 product_code_lower; // or upper
 	SceUInt16 product_sub_code;
 	SceUInt16 data_0x06;
 	SceUInt32 number;
