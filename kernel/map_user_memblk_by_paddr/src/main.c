@@ -12,6 +12,7 @@
 #include <psp2kern/kernel/sysmem.h>
 #include <psp2kern/kernel/debug.h>
 
+SceUID proc_event_id = -1, memid = -1;
 void *base;
 
 // should be array count <= 0x20 for one mem block
@@ -39,6 +40,10 @@ int create_proc(SceUID pid, SceProcEventInvokeParam2 *a2, int a3){
 	ksceDebugPrintf("        ret_length : 0x%X\n", PA_list.ret_length);
 	ksceDebugPrintf("        ret_count  : 0x%X\n", PA_list.ret_count);
 
+	if(0){
+		output[0].addr   = 0x1F840000;
+		output[0].length = 0x1000;
+	}
 
 	// set fake paddr for test
 	for(int i=1;i<0x20;i++){
@@ -74,18 +79,48 @@ int create_proc(SceUID pid, SceProcEventInvokeParam2 *a2, int a3){
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
 
+	int res;
+
 	SceProcEventHandler handler;
 	memset(&handler, 0, sizeof(handler));
 	handler.size = sizeof(handler);
 	handler.create = create_proc;
 
-	ksceKernelRegisterProcEventHandler("SceMemoryMappingByPaddrTest", &handler, 0);
+	res = ksceKernelRegisterProcEventHandler("SceMemoryMappingByPaddrTest", &handler, 0);
+	if(res < 0){
+		goto error;
+	}
 
-	SceUID memid = ksceKernelAllocMemBlock("SceKernelMemoryMap", SCE_KERNEL_MEMBLOCK_TYPE_KERNEL_RW, 0x1000, NULL);
-	ksceKernelGetMemBlockBase(memid, &base);
+	proc_event_id = res;
+
+
+	res = ksceKernelAllocMemBlock("SceKernelMemoryMap", SCE_KERNEL_MEMBLOCK_TYPE_KERNEL_RW, 0x1000, NULL);
+	if(res < 0){
+		goto error;
+	}
+
+	memid = res;
+
+	res = ksceKernelGetMemBlockBase(memid, &base);
+	if(res < 0){
+		goto error;
+	}
 
 	for(int i=0;i<0x10;i++)
 		memset(base + (i * 0x100), 0x11 * i, 0x100);
 
-	return 0;
+	return SCE_KERNEL_START_SUCCESS;
+
+error:
+	if(memid >= 0){
+		ksceKernelFreeMemBlock(memid);
+		memid = -1;
+	}
+
+	if(proc_event_id >= 0){
+		ksceKernelUnregisterProcEventHandler(proc_event_id);
+		proc_event_id = -1;
+	}
+
+	return SCE_KERNEL_START_FAILED;
 }
