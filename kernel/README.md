@@ -127,6 +127,10 @@ Show current qaf on tty.
 
 A PS Vita Mac address spoofer on kernel level working.
 
+# malloc_free_test_kernel
+
+Test of malloc/free implemented in Kernel
+
 # nvs_dumper
 
 Dumper for syscon non-volatile storage.
