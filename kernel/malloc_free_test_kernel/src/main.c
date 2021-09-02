@@ -12,7 +12,6 @@
 #include <psp2kern/kernel/sysclib.h>
 #include <psp2kern/kernel/debug.h>
 #include <taihen.h>
-#include "memory/memory.h"
 
 int module_get_offset(SceUID pid, SceUID modid, int segidx, uint32_t offset, uintptr_t *dst);
 int module_get_export_func(SceUID pid, const char *modname, uint32_t lib_nid, uint32_t func_nid, uintptr_t *func);
