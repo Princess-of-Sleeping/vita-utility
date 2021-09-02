@@ -11,3 +11,7 @@ This application remounts os0:, vs0: with RW.
 # kernel_module_loader
 
 The Kernel Module Loader
+
+# malloc_free_test_user
+
+Test of malloc/free implemented in User
