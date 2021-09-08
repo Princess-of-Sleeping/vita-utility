@@ -44,39 +44,8 @@ int module_start(SceSize args, void *argp){
 	GetExport("SceSysmem", 0x6F25E18A, 0xE655852F, &sceKernelGetNameForUid2);
 	GetExport("SceSysmem", 0x63A519E5, 0x66636970, &sceGUIDtoClass);
 
-	print_guid_info(0x10005);
-	print_guid_info(0x10007);
-	print_guid_info(0x10009);
-	print_guid_info(0x1000B);
-	print_guid_info(0x1000D);
-	print_guid_info(0x1000F);
-
-	print_guid_info(0x10011);
-	print_guid_info(0x10013);
-	print_guid_info(0x10015);
-	print_guid_info(0x10017);
-	print_guid_info(0x10019);
-	print_guid_info(0x1001B);
-	print_guid_info(0x1001D);
-	print_guid_info(0x1001F);
-
-	print_guid_info(0x10021);
-	print_guid_info(0x10023);
-	print_guid_info(0x10025);
-	print_guid_info(0x10027);
-	print_guid_info(0x10029);
-	print_guid_info(0x1002B);
-	print_guid_info(0x1002D);
-	print_guid_info(0x1002F);
-
-	print_guid_info(0x10031);
-	print_guid_info(0x10033);
-	print_guid_info(0x10035);
-	print_guid_info(0x10037);
-	print_guid_info(0x10039);
-	print_guid_info(0x1003B);
-	print_guid_info(0x1003D);
-	print_guid_info(0x1003F);
+	for(int i=0;i<0x400;i++)
+		print_guid_info(0x10005 + (i << 1));
 
 	return SCE_KERNEL_START_SUCCESS;
 }
