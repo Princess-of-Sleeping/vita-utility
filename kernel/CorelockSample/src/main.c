@@ -19,18 +19,24 @@ int sceCorelockThread(SceSize args, void *argp){
 
 	ksceDebugPrintf("[%d] sceCorelockThread 0x%X\n", this_cpu_core, ksceKernelGetThreadId());
 
-	if(this_cpu_core == 3){
+	if(this_cpu_core == 1){
+		ksceDebugPrintf("[%d] waiting 1000 usec\n", this_cpu_core);
+		ksceKernelDelayThread(1000);
+		ksceDebugPrintf("[%d] after 1000 usec\n", this_cpu_core);
+	}
+
+	ksceDebugPrintf("[%d] invoke sceKernelCorelockLock\n", this_cpu_core);
+	ksceKernelCorelockLock(&corelock_ctx, 0); // Cores other than core0 cannot execute the code below unless core0 call ksceKernelCorelockUnlock
+	ksceDebugPrintf("[%d] after  sceKernelCorelockLock\n", this_cpu_core);
+
+	if(this_cpu_core == 0){
 		ksceDebugPrintf("[%d] waiting 5 second\n", this_cpu_core);
 		ksceKernelDelayThread(5 * 1000 * 1000);
 		ksceDebugPrintf("[%d] after 5 second\n", this_cpu_core);
-	}else{
-		ksceDebugPrintf("[%d] invoke sceKernelCorelockLock\n", this_cpu_core);
-		ksceKernelCorelockLock(&corelock_ctx, SCE_CORELOCK_CORE3);
-		ksceDebugPrintf("[%d] after  sceKernelCorelockLock\n", this_cpu_core);
 	}
 
 	ksceDebugPrintf("[%d] invoke sceKernelCorelockUnlock\n", this_cpu_core);
-	ksceKernelCorelockUnlock(&corelock_ctx); // Cores other than core3 cannot execute the code below unless core3 passes here
+	ksceKernelCorelockUnlock(&corelock_ctx);
 	ksceDebugPrintf("[%d] after  sceKernelCorelockUnlock\n", this_cpu_core);
 
 	ksceDebugPrintf("[%d] Corelock time %lld [usec]\n", this_cpu_core, ksceKernelGetSystemTimeWide());
