@@ -79,6 +79,12 @@ Verify SceNpDrm activation file.
 
 Show current dipsw on tty.
 
+# emmc_dumper
+
+The emmc dumper (NAND).
+
+Dump takes about 10 minutes.
+
 # noSuspend
 
 Disable suspend.
