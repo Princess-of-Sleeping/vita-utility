@@ -147,6 +147,10 @@ Dumper for Secure loader bank.
 
 But secure loader bank is guessed name.
 
+# sysmem_guid_tester
+
+The sysmem guid tester.
+
 # syscon_vs_dumper
 
 Dumper for syscon vs storage.
