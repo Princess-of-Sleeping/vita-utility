@@ -10,6 +10,7 @@ endif()
 
 project(vita-utility-kernel)
 
+add_subdirectory(ArmMemoryAccessTester)
 add_subdirectory(CorelockSample)
 add_subdirectory(DevkitTV)
 add_subdirectory(KernelCustomMalloc)
