@@ -37,6 +37,12 @@ If pressed start  : If called sceSettingsMain (SceSettings_text + 0x110), trigge
 If pressed select : If access to settings_type variable (SceSettings_data + 0x3C), trigger hardware watch point.
 ```
 
+# SceKernelPanicDebugger
+
+Display the more kernel panic information to Console Output.
+
+This plugin is for devkit only.
+
 # ScePfsMgrAllowDbgPfsPatch
 
 Patch to allow debug version sce_pfs app mount and pkg install. 
