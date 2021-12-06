@@ -36,4 +36,4 @@ vita_create_self(fios2kernel_tester.skprx ${PROJECT_NAME}
   STRIPPED
 )
 
-vita_create_stubs(stubs ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/exports.yml KERNEL)
+vita_create_stubs(stubs_${PROJECT_NAME} ${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/exports.yml KERNEL)
