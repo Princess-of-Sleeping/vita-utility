@@ -808,7 +808,7 @@ int alloc_free_test_paf(void){
 
 	for(int i=0;i<ALLOC_FREE_PARAM_NUM;i++){
 		time_s = sceKernelGetSystemTimeWide();
-		pResult[i] = sce_paf_private_malloc(allocFreeTestParam[i].length);
+		pResult[i] = sce_paf_malloc(allocFreeTestParam[i].length);
 		time_e = sceKernelGetSystemTimeWide();
 
 		sceClibPrintf("%02d %p length=0x%08X %10lld usec\n", i, pResult[i], allocFreeTestParam[i].length, time_e - time_s);
@@ -817,7 +817,7 @@ int alloc_free_test_paf(void){
 	for(int i=0;i<ALLOC_FREE_PARAM_NUM;i++){
 
 		time_s = sceKernelGetSystemTimeWide();
-		sce_paf_private_free(pResult[i]);
+		sce_paf_free(pResult[i]);
 		time_e = sceKernelGetSystemTimeWide();
 
 		sceClibPrintf("%02d %p %10lld usec\n", i, pResult[i], time_e - time_s);
@@ -836,7 +836,7 @@ int alloc_free_test_paf(void){
 	for(int i=0;i<ALLOC_FREE_PARAM_NUM;i++){
 
 		time_s = sceKernelGetSystemTimeWide();
-		sce_paf_private_free(pResult[i]);
+		sce_paf_free(pResult[i]);
 		time_e = sceKernelGetSystemTimeWide();
 
 		sceClibPrintf("%02d %p %10lld usec\n", i, pResult[i], time_e - time_s);
