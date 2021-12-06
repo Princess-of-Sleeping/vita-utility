@@ -9,26 +9,26 @@
 #include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
 #include <psp2/sysmodule.h>
+#include <psp2/paf.h>
 #include "paf.h"
 
-char test_heap[0x2000] __attribute__((aligned(0x20)));
+char test_heap[0x8000] __attribute__((aligned(0x20)));
 
 int main(int argc, char *argv[]){
 
-	void *res;
 	int load_res;
-	ScePafInit init_param;
-	ScePafHeapInfo heap_info;
+	ScePafInitParam init_param;
+	ScePafHeapContext heap_context;
 	SceSysmoduleOpt sysmodule_opt;
 
-	sceClibMemset(&heap_info, 0, sizeof(heap_info));
+	sceClibMemset(&heap_context, 0, sizeof(heap_context));
 
-	init_param.global_heap_size = 0x8000;
-	init_param.a2               = 0xFFFFFFFF;
-	init_param.a3               = 0xFFFFFFFF;
-	init_param.use_gxm          = 0;
-	init_param.heap_opt_param1  = 1;
-	init_param.heap_opt_param2  = 1;
+	init_param.global_heap_size  = 0x8000;
+	init_param.unk_0x04          = 0xFFFFFFFF;
+	init_param.unk_0x08          = 0xFFFFFFFF;
+	init_param.is_cdialog_mode   = 0;
+	init_param.heap_option_align = 0x4 << 8;
+	init_param.heap_option_unk   = 1;
 
 	load_res = 0xFFFFFFFF;
 	sysmodule_opt.flags  = 0x10; // with arg
@@ -36,38 +36,35 @@ int main(int argc, char *argv[]){
 
 	sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF, sizeof(init_param), &init_param, &sysmodule_opt);
 
-	res = scePafHeapInit(&heap_info, test_heap, sizeof(test_heap), "ScePafHeap", NULL);
+	scePafCreateHeap(&heap_context, test_heap, sizeof(test_heap), "ScePafHeap", NULL);
 
-	sceClibPrintf("scePafHeapInit : 0x%X\n", res);
-	sceClibPrintf("heap_info ptr  : 0x%X\n", &heap_info);
 	sceClibPrintf("test_heap ptr  : 0x%X\n", test_heap);
-	sceClibPrintf("heap_info.a3   : 0x%X\n", heap_info.a3);
 
-	SceSize list[] = {0x4000, 0x200, 0x400, 0x800};
+	SceSize list[] = {0x10000, 0x200, 0x400, 0x800, 0x100, 0x80, 0x40, 0x20, 0x10};
 	void *ptr_list[sizeof(list) / sizeof(SceSize)];
 
 	for(int i=0;i<(sizeof(list) / sizeof(SceSize));i++){
-		ptr_list[i] = scePafMallocWithInfo(&heap_info, list[i]);
+		ptr_list[i] = scePafMallocWithContext(&heap_context, list[i]);
 
-		ptr_list[i] = scePafReallocWithInfo(&heap_info, ptr_list[i], list[i] + 0x123);
+		ptr_list[i] = scePafReallocWithContext(&heap_context, ptr_list[i], list[i] + 0x123);
 
 		sceClibPrintf("malloc test    : 0x%08X/0x%X\n", ptr_list[i], list[i]);
 
-		scePafFreeWithInfo(&heap_info, ptr_list[i]);
+		scePafFreeWithContext(&heap_context, ptr_list[i]);
 
 
 
-		ptr_list[i] = scePafMallocAlignWithInfo(&heap_info, 0x400, list[i]);
+		ptr_list[i] = scePafMallocAlignWithContext(&heap_context, 0x400, list[i]);
 
 		sceClibPrintf("malloc test    : 0x%08X/0x%X(with align)\n", ptr_list[i], list[i]);
 	}
 
 	for(int i=0;i<(sizeof(list) / sizeof(SceSize));i++){
-		scePafFreeWithInfo(&heap_info, ptr_list[i]);
+		scePafFreeWithContext(&heap_context, ptr_list[i]);
 		ptr_list[i] = NULL;
 	}
 
-	scePafHeapFini(&heap_info);
+	scePafDeleteHeap(&heap_context);
 
 	sceSysmoduleUnloadModuleInternal(SCE_SYSMODULE_INTERNAL_PAF);
 
