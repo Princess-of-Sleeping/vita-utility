@@ -5,11 +5,14 @@
 
 #include <psp2/kernel/modulemgr.h>
 #include <psp2/kernel/threadmgr.h>
+#include <psp2/kernel/processmgr.h>
 #include <psp2/kernel/clib.h>
 #include <psp2/io/fcntl.h>
+#include <psp2/io/dirent.h>
 #include <psp2/appmgr.h>
 #include <psp2/paf.h>
 #include <psp2/sysmodule.h>
+#include <psp2/vshbridge.h>
 #include <taihen.h>
 
 const char    sceUserMainThreadName[]          = "kernel_module_loader";
@@ -37,6 +40,7 @@ typedef struct ModuleLoadParam {
 	char *path;
 	SceSize path_length;
 	SceUID modid;
+	SceUInt32 number;
 } ModuleLoadParam;
 
 int module_num = 0;
@@ -81,9 +85,40 @@ int load_module_add_path(const char *path){
 	pModuleLoadParam->path        = tmp_path;
 	pModuleLoadParam->path_length = path_length + 1;
 	pModuleLoadParam->modid       = -1;
+	pModuleLoadParam->number      = module_num;
 
 	pModuleLoadParamTree = pModuleLoadParam;
 	module_num = module_num + 1;
+
+	return 0;
+}
+
+int load_module_add_path_by_dir(const char *dir){
+
+	int res;
+	char path[0x400];
+
+	SceUID dd = sceIoDopen(dir);
+	if(dd < 0){
+		return dd;
+	}
+
+	do {
+		SceIoDirent dirent;
+		sceClibMemset(&dirent, 0, sizeof(dirent));
+
+		res = sceIoDread(dd, &dirent);
+		if(res >= 0){
+
+			path[sizeof(path) - 1] = 0;
+			sceClibSnprintf(path, sizeof(path) - 1, "%s/%s", dir, dirent.d_name);
+
+			load_module_add_path(path);
+		}
+
+	} while (res > 0);	
+
+	sceIoDclose(dd);
 
 	return 0;
 }
@@ -102,6 +137,48 @@ ModuleLoadParam *saerch_module_entry(const char *path){
 	return NULL;
 }
 
+ModuleLoadParam *saerch_module_entry_by_number(SceUInt32 number){
+
+	ModuleLoadParam *pModuleLoadParam = pModuleLoadParamTree;
+
+	while(pModuleLoadParam != NULL){
+		if(number == pModuleLoadParam->number)
+			return pModuleLoadParam;
+
+		pModuleLoadParam = pModuleLoadParam->next;
+	}
+
+	return NULL;
+}
+
+int cvtStrToDec(const char *str, SceUInt32 *dst){
+
+	char ch;
+	SceUInt32 loc_val = 0;
+
+	if(str == NULL)
+		return -1;
+
+	ch = *str++;
+	if(ch == 0)
+		return -1;
+
+	do {
+		ch -= 0x30;
+
+		if(ch > 9)
+			return -1;
+
+		loc_val = ch + (loc_val * 10);
+
+		ch = *str++;
+	} while (ch != 0);
+
+	*dst = loc_val;
+
+	return 0;
+}
+
 int tty_in_thread(SceSize args, void *argp){
 
 	int res;
@@ -111,6 +188,7 @@ int tty_in_thread(SceSize args, void *argp){
 
 	sceClibPrintf("commands\n");
 	sceClibPrintf("\tload module_path\n");
+	sceClibPrintf("\tload_by_number number\n");
 	sceClibPrintf("\texit\n");
 
 	while(1){
@@ -130,6 +208,22 @@ int tty_in_thread(SceSize args, void *argp){
 				continue;
 			}
 			param->modid = taiLoadStartKernelModule(param->path, 0, NULL, 0);
+		}else if(sceClibStrncmp(tty_buf, "load_by_number ", 15) == 0){
+
+			SceUInt32 number;
+
+			res = cvtStrToDec(&tty_buf[15], &number);
+			if(res < 0)
+				continue;
+
+			ModuleLoadParam *param = saerch_module_entry_by_number(number);
+			if(param == NULL){
+				sceClibPrintf("not found module\n");
+				continue;
+			}
+			param->modid = taiLoadStartKernelModule(param->path, 0, NULL, 0);
+			if(param->modid < 0)
+				sceClibPrintf("0x%X\n", param->modid);
 		}else if(sceClibStrncmp(tty_buf, "exit", 4) == 0){
 			break;
 		}
@@ -158,19 +252,18 @@ int module_start(SceSize args, void *argp){
 
 	sceSysmoduleLoadModuleInternalWithArg(SCE_SYSMODULE_INTERNAL_PAF, sizeof(init_param), &init_param, &sysmodule_opt);
 
+	load_module_add_path_by_dir("host0:data/kernel_modules");
+
 	load_module_add_path("host0:module.skprx");
 	load_module_add_path("host0:baremetal-loader.skprx");
 	load_module_add_path("host0:kbl-loader.skprx");
 	load_module_add_path("ux0:module.skprx");
 	load_module_add_path("ux0:kbl-loader.skprx");
 
-	int count = 1;
 	ModuleLoadParam *pModuleLoadParam = pModuleLoadParamTree;
 
 	while(pModuleLoadParam != NULL){
-		sceClibPrintf("%-4d %s\n", count, pModuleLoadParam->path);
-
-		count++;
+		sceClibPrintf("%-4d %s\n", pModuleLoadParam->number, pModuleLoadParam->path);
 		pModuleLoadParam = pModuleLoadParam->next;
 	}
 
