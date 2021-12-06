@@ -81,6 +81,10 @@ The Corelock Sample.
 
 Verify DevKit/TestingKit activation file.
 
+# sce_fios2kernel_tester
+
+The SceFios2Kernel kernel module tester. just subroutine etc.
+
 # np_act_verifier
 
 Verify SceNpDrm activation file.
