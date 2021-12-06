@@ -61,25 +61,25 @@ int load_module_add_path(const char *path){
 
 	ModuleLoadParam *pModuleLoadParam;
 
-	pModuleLoadParam = sce_paf_private_malloc(sizeof(*pModuleLoadParam));
+	pModuleLoadParam = sce_paf_malloc(sizeof(*pModuleLoadParam));
 	if(pModuleLoadParam == NULL){
 		return -1;
 	}
 
-	size_t path_length = sce_paf_private_strlen(path);
+	size_t path_length = sce_paf_strlen(path);
 	if(path_length == 0){
 		return -2;
 	}
 
 	char *tmp_path;
 
-	tmp_path = sce_paf_private_malloc(path_length + 1);
+	tmp_path = sce_paf_malloc(path_length + 1);
 	if(tmp_path == NULL){
-		sce_paf_private_free(pModuleLoadParam);
+		sce_paf_free(pModuleLoadParam);
 		return -1;
 	}
 
-	sce_paf_private_memcpy(tmp_path, path, path_length + 1);
+	sce_paf_memcpy(tmp_path, path, path_length + 1);
 
 	pModuleLoadParam->next        = pModuleLoadParamTree;
 	pModuleLoadParam->path        = tmp_path;
@@ -128,7 +128,7 @@ ModuleLoadParam *saerch_module_entry(const char *path){
 	ModuleLoadParam *pModuleLoadParam = pModuleLoadParamTree;
 
 	while(pModuleLoadParam != NULL){
-		if(sce_paf_private_strcmp(path, pModuleLoadParam->path) == 0)
+		if(sce_paf_strcmp(path, pModuleLoadParam->path) == 0)
 			return pModuleLoadParam;
 
 		pModuleLoadParam = pModuleLoadParam->next;
