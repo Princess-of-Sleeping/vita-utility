@@ -120,12 +120,102 @@ typedef struct SceGUIDEntry { // size is 0x20-bytes
 	char *name;
 } SceGUIDEntry;
 
+typedef struct SceUIDEntryHeapObject { // size is 0xB0-bytes
+	void *pUserdata;
+	SceClass *pClass;
+	int data_0x08;
+	int data_0x0C;
+	int data_0x10;
+	int data_0x14;
+	int data_0x18;
+	int data_0x1C;
+	short entrySize;
+	short data_0x22;
+	short data_0x24;
+	short data_0x26;
+	int data_0x28;
+	SceUInt32 magic;
+
+	int data_0x30;
+	int data_0x34; // nData_0x38
+	SceGUIDEntry **data_0x38;
+	SceGUIDEntry *data_0x3C;
+
+	int data_0x40;
+	short data_0x44;
+	short data_0x46;
+	int data_0x48;
+	int data_0x4C;
+
+	int data_0x50[24];
+} SceUIDEntryHeapObject;
+
 SceUInt32 (* sceUIDCoreSuspendCpuIntr)(void *pUIDCoreContext, const char *function, int line);
 void (* sceUIDCoreResumeCpuIntr)(void *pUIDCoreContext, SceUInt32 prev_state);
 
 int (* sceGUIDGetEntryWithAttr)(void *pUIDCoreContext, SceUID guid, int attr, SceGUIDEntry **ppEntry);
 
 SceKernelSystemMemory **ppModulePrivate3 = NULL;
+
+__attribute__((noinline, optimize("O2")))
+void hex_dump(const void *addr, int len){
+
+	if(addr == NULL)
+		return;
+
+	if(len == 0)
+		return;
+
+	while(len >= 0x10){
+		ksceDebugPrintf(
+			"%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\n",
+			((char *)addr)[0x0], ((char *)addr)[0x1], ((char *)addr)[0x2], ((char *)addr)[0x3],
+			((char *)addr)[0x4], ((char *)addr)[0x5], ((char *)addr)[0x6], ((char *)addr)[0x7],
+			((char *)addr)[0x8], ((char *)addr)[0x9], ((char *)addr)[0xA], ((char *)addr)[0xB],
+			((char *)addr)[0xC], ((char *)addr)[0xD], ((char *)addr)[0xE], ((char *)addr)[0xF]
+		);
+		addr += 0x10;
+		len -= 0x10;
+	}
+
+	if(len != 0){
+		while(len >= 1){
+			ksceDebugPrintf("%02X ", ((char *)addr)[0x0]);
+			addr += 1;
+			len -= 1;
+		}
+
+		ksceDebugPrintf("\n");
+	}
+}
+
+int uid_entry_test(SceKernelSystemMemory *pModulePrivate3){
+
+	SceUIDEntryHeapObject *pUIDEntryHeapObject = pModulePrivate3->data_0x08;
+
+	for(int i=0;i<pUIDEntryHeapObject->data_0x34;i++){
+
+		int uVar1;
+		SceGUIDEntry *pSVar5 = pUIDEntryHeapObject->data_0x38[i];
+
+		if (pUIDEntryHeapObject->data_0x3C == pSVar5) {
+			uVar1 = pUIDEntryHeapObject->data_0x44;
+		}else{
+			uVar1 = pUIDEntryHeapObject->data_0x46;
+		}
+
+		for(int n=0;n<uVar1;n++){
+			if((0x300000 & pSVar5[n].attr) != 0){
+
+				if(NULL != pSVar5[n].pObject){
+					ksceDebugPrintf("UID: 0x%08X, attr: 0x%08X, name: %s\n", pSVar5[n].guid, pSVar5[n].attr, pSVar5[n].name);
+				}
+			}
+		}
+	}
+
+	return 0;
+}
 
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
@@ -147,6 +237,11 @@ int module_start(SceSize args, void *argp){
 
 	ksceDebugPrintf("%p\n", ppModulePrivate3);  // Should be in SceSysmem data segment
 	ksceDebugPrintf("%p\n", *ppModulePrivate3);
+
+	if(1){
+		uid_entry_test(*ppModulePrivate3);
+		return SCE_KERNEL_START_NO_RESIDENT;
+	}
 
 	guid = 0x10001;
 
