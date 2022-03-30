@@ -55,7 +55,7 @@ int module_start(SceSize args, void *argp){
 		return SCE_KERNEL_START_NO_RESIDENT;
 	}
 
-	ksceKernelCorelockContextInitialize(&corelock_ctx);
+	ksceKernelCorelockInitialize(&corelock_ctx);
 
 	SceUID thid_core1, thid_core2, thid_core3;
 
