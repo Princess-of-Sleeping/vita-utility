@@ -8,253 +8,31 @@
 
 #include <psp2kern/kernel/modulemgr.h>
 #include <psp2kern/kernel/sysmem.h>
-#include <psp2kern/kernel/cpu.h>
-#include <psp2kern/sblaimgr.h>
+#include <psp2kern/kernel/sysclib.h>
+#include <psp2kern/kernel/proc_event.h>
 #include <psp2kern/io/devctl.h>
 #include <psp2kern/io/dirent.h>
 #include <psp2kern/io/fcntl.h>
-#include <string.h>
-#include <stdio.h>
 #include "vfs.h"
-#include "sce_cpu.h"
-#include "fs_mgr.h"
-#include "item_mgr.h"
-#include "module_kernel.h"
-#include "sysroot_kblparam.h"
-#include "etc.h"
-#include "map_conf1.h"
+#include "fs_tool.h"
+#include "dmass_process.h"
 
-typedef struct SceVfsMount2 { // size is 0x14
-	const char *unit;     // ex:"host0:"
-	const char *device1;  // ex:"bsod_dummy_host_fs"
-	const char *device2;  // ex:"bsod_dummy_host_fs"
-	int data_0x0C;        // ex:0
-	int data_0x10;        // ex:0
-} SceVfsMount2;
+char *strrchr(const char *s, int c);
 
-typedef struct SceVfsMount {   // size is 0x20
-	const char *device;    // ex:"/host"
-	int data_0x04;
-	int data_0x08;         // ex:0x03000004
-	int data_0x0C;         // ex:0x00008006
-	const char *data_0x10; // ex:"bsod_dummy_host_fs"
-	int data_0x14;
-	const SceVfsMount2 *data_0x18;
-	int data_0x1C;
-} SceVfsMount;
+#define SCE_CST_MODE        0x0001
+#define SCE_CST_SIZE        0x0004
+#define SCE_CST_CT          0x0008
+#define SCE_CST_AT          0x0010
+#define SCE_CST_MT          0x0020
 
-typedef struct SceVfsUmount {
-	const char *device; // ex:"/host"
-	int data_0x04;
-} SceVfsUmount;
+#define FAPS_DMASS_DEVICE_NAME "vsd0:"
 
-typedef struct SceVfsTable { // size is 0x34?
-	const void *func00;
-	const void *func04;
-	const void *func08;
-	const void *func0C;
-	const void *func10;
-	const void *func14;
-	const void *func18;
-	const void *func1C;
-	const void *func20;
-	const void *func24;
-	const void *func28;
-	const void *func2C;
-	const void *func30;
-} SceVfsTable;
-
-typedef struct SceVfsTable2 { // size is 0x74?
-	const void *func00;
-	const void *func04;
-	const void *func08;
-	const void *func0C;
-	const void *func10;
-	const void *func14;
-	const void *func18;
-	const void *func1C;
-	const void *func20;
-	const void *func24;
-	const void *func28;
-	const void *func2C;
-	const void *func30;
-	const void *func34;
-	const void *func38;
-	const void *func3C;
-	const void *func40;
-	const void *func44;
-	const void *func48;
-	const void *func4C;
-	const void *func50;
-	const void *func54;
-	const void *func58;
-	const void *func5C;
-	const void *func60;
-	const void *func64;
-	const void *func68;
-	const void *func6C;
-	const void *func70;
-} SceVfsTable2;
-
-typedef struct SceVfsAdd {     // size is 0x20
-	const SceVfsTable *func_ptr1;
-	const char *device;    // ex:"bsod_dummy_host_fs"
-	int data_0x08;         // ex:0x11
-	int data_0x0C;
-	int data_0x10;         // ex:0x10
-	const SceVfsTable2 *func_ptr2;
-	int data_0x18;
-	struct SceVfsAdd *prev;
-} SceVfsAdd;
-
-int ksceVfsMount(const SceVfsMount *pVfsMount);
-int ksceVfsUnmount(const SceVfsUmount *pVfsUmount);
-
-int ksceVfsAddVfs(SceVfsAdd *pVfsAdd);
-int ksceVfsDeleteVfs(const char *fs, void *a2); // "deci4p_drfp_dev_fs"
-
-const SceVfsMount2 vfs_mount2 = {
-	.unit      = "host0:",
-	.device1   = "faps_dummy_host_fs",
-	.device2   = "faps_dummy_host_fs",
-	.data_0x0C = 0,
-	.data_0x10 = 0
-};
-
-const SceVfsMount vfs_mount = {
-	.device    = "/host",
-	.data_0x04 = 0,
-	.data_0x08 = 0x03000004,
-	.data_0x0C = 0x00008006,
-	.data_0x10 = "faps_dummy_host_fs",
-	.data_0x14 = 0,
-	.data_0x18 = &vfs_mount2,
-	.data_0x1C = 0
-};
-
-const SceVfsMount2 vfs_mount2_devkit = {
-	.unit      = "vsd0:",
-	.device1   = "faps_dummy_host_fs",
-	.device2   = "faps_dummy_host_fs",
-	.data_0x0C = 0,
-	.data_0x10 = 0
-};
-/*
-	.data_0x08 = 0x10,
-	.data_0x0C = 0x6003,
-*/
-const SceVfsMount vfs_mount_devkit = {
-	.device    = "/md",
-	.data_0x04 = 0,
-	.data_0x08 = 0x03000010,
-	.data_0x0C = 0x00008003,
-	.data_0x10 = "faps_dummy_host_fs",
-	.data_0x14 = 0,
-	.data_0x18 = &vfs_mount2_devkit,
-	.data_0x1C = 0
-};
-
-const SceVfsUmount vfs_umount = {
-	.device = "/host",
-	.data_0x04 = 0
-};
-
-SceVfsAdd vfs_add;
-
-SceUID heap_uid;
-void *root_node;
-
-SceUID (* sceKernelCreateUidObj)(SceClass *cls, const char *name, SceCreateUidObjOpt *opt, SceObjectBase **obj);
-
-int (* sceKernelGetModuleList)(SceUID pid, int flags1, int flags2, SceUID *modids, size_t *num);
-int (* sceKernelGetModuleInfo)(SceUID pid, SceUID modid, SceKernelModuleInfo *info);
-
-#define GetExport(modname, lib_nid, func_nid, func) module_get_export_func(0x10005, modname, lib_nid, func_nid, (uintptr_t *)func)
-
-int module_get_export_func(SceUID pid, const char *modname, uint32_t libnid, uint32_t funcnid, uintptr_t *func);
-
-/**
- * @j 実行許可がない @ej
- * @e Operation is not permitted @ee
- */
-#define SCE_ERROR_ERRNO_EPERM					-2147418111	/* 0x80010001 */
-
-/**
- * @j ファイルがない @ej
- * @e Associated file or directory does not exist @ee
- */
-#define SCE_ERROR_ERRNO_ENOENT					-2147418110	/* 0x80010002 */
-
-int sub_81000008(void *a1){
-
-	if(a1 == NULL)
-		return 0x80010016;
-
-	if(*(void **)(a1) == NULL)
-		return 0x80010016;
-
-	*(uint32_t *)(*(void **)(a1) + 0x68) = 0x80;
-	*(uint32_t *)(*(void **)(a1) + 0xC0) = 0x10000;
-
-	return 0;
-}
-
-int sub_81000020(void *a1){
-	return 0;
-}
-
-int sub_81000024(void *a1){
-
-	ksceDebugPrintf("sub_81000024\n");
-
-	if(a1 == NULL)
-		return 0x80010016;
-
-	if(*(void **)(a1) == NULL)
-		return 0x80010016;
-
-	root_node = *(void **)(a1 + 8);
-
-	DataPackForSystem_t *pDataPackForSystem;
-
-	create_file_item(root_node, &pDataPackForSystem);
-
-	pDataPackForSystem->data.dir_entry_root = NULL;
-	pDataPackForSystem->data.dir_entry      = NULL;
-	pDataPackForSystem->data.seek           = 0x0LL;
-	pDataPackForSystem->data.size           = 0x0LL;
-
-	init_module_kernel();
-	init_sysroot();
-	init_etc();
-	init_map_conf1();
-
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x48) = *(uint32_t *)(*(uint32_t *)(a1) + 0xC4);
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x4C) = *(uint32_t *)(a1);
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x50) = 0;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x60) = 0;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x64) = 0;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x74) = 1;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x78) = 0x1002;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x80) = 0;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x84) = 0;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x88) = 0;
-	*(uint32_t *)(*(void **)(a1 + 8) + 0x8C) = 0;
-
-	return 0;
-}
-
-int sub_81000000(){
-	return 0;
-}
-
-int sub_81000004(){
-	return 0;
-}
+SceVfsAddParam vfs_add;
+// extern SceUID test_heap_uid;
 
 int vfs_devctl(SceVfsDevctl *args){
 
-	if(strcmp(args->dev, "host0:") != 0 && strcmp(args->dev, "vsd0:") != 0)
+	if(strcmp(args->dev, FAPS_DMASS_DEVICE_NAME) != 0)
 		return -1;
 
 	if(args->cmd == 0x3001 && args->outlen == sizeof(SceIoDevInfo)){
@@ -270,402 +48,1089 @@ int vfs_devctl(SceVfsDevctl *args){
 	return -1;
 }
 
-const SceVfsTable vfs_table_2 = {
-	.func00 = sub_81000008,
-	.func04 = sub_81000020,
-	.func08 = sub_81000024,
-	.func0C = NULL,
-	.func10 = NULL,
-	.func14 = NULL,
-	.func18 = NULL,
-	.func1C = NULL,
-	.func20 = sub_81000000,
-	.func24 = sub_81000004,
-	.func28 = NULL,
-	.func2C = vfs_devctl,
-	.func30 = NULL  // PathElme
-};
+int vfs_mount_func(void *argp){
+	return 0;
+}
 
-int vfs_open(SceVfsOpen *args){
-/*
-	ksceDebugPrintf("vfs_open\n");
-	ksceDebugPrintf("path      : %s\n", args->path_info->path);
-	ksceDebugPrintf("prev_node : 0x%X\n", args->node->prev_node);
-	ksceDebugPrintf("node      : 0x%X\n", args->node);
-	ksceDebugPrintf("flags     : 0x%X\n", args->flags);
-*/
-	DataPack_t *pDataPack = getFileEntryByNode(args->node->prev_node);
-	if(pDataPack == NULL){
-		ksceDebugPrintf("%s:not found to %s\n", __FUNCTION__, args->path_info->path);
-		return SCE_ERROR_ERRNO_ENOENT;
+int vfs_umount_func(void *argp){
+	return 0;
+}
+
+int vfs_set_root(SceVfsopSetRootArgs *argp){
+
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	FapsDmassFs *pDmassFs;
+
+	if(argp == NULL)
+		return 0x80010016;
+
+	if(argp->pMount == NULL)
+		return 0x80010016;
+
+	pDmassFs = create_dmass_dir_info("md");
+	if(pDmassFs == NULL){
+		return -1;
 	}
 
-	FileEntry *pDirEntry;
+	pDmassFs->pNode = argp->pNode;
+
+	set_fs_root(pDmassFs);
+
+	argp->pNode->core.dev_info  = pDmassFs;
+	argp->pNode->core.mount     = argp->pMount;
+	argp->pNode->core.prev_node = NULL;
+	argp->pNode->core.unk_60    = 0;
+	argp->pNode->core.unk_64    = 0;
+	argp->pNode->core.unk_74    = 1;
+	argp->pNode->core.unk_78    = 0x1002;
+	argp->pNode->core.st_size   = 0LL;
+	argp->pNode->core.st_attr   = 0;
+	argp->pNode->core.unk_8C    = 0;
+
+	return 0;
+}
+
+int vfs_init(void *a1){
+	return 0;
+}
+
+int vfs_deinit(void *a1){
+	return 0;
+}
+
+int vop_open(SceVfsOpen *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tnode : %p\n", argp->node);
+	ksceDebugPrintf("\tname : %s (%d)\n", argp->file_info->name, argp->file_info->name_len);
+	ksceDebugPrintf("\tpath : %s\n", argp->file_info->path);
+
+	FapsDmassFs *pEntry;
+
+	pEntry = (FapsDmassFs *)argp->node->core.dev_info;
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = create_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return -1;
+
+	if((argp->pVfsFileObject->flags & SCE_O_APPEND) != 0){
+		argp->pVfsFileObject->offset = pEntry->stat.st_size;
+	}
+
+	return 0;
+}
+
+int vop_create(SceVopCreateArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tnode     : %p\n", argp->pNode);
+	ksceDebugPrintf("\tname     : %s (%d)\n", argp->file_info->name, argp->file_info->name_len);
+	ksceDebugPrintf("\tpath     : %s\n", argp->file_info->path);
+	ksceDebugPrintf("\tflags    : 0x%X\n", argp->flags);
+	ksceDebugPrintf("\tmode     : 0%o\n", argp->mode);
+
+	int res;
+	SceVfsNode *pNode;
+	FapsDmassFs *pDmassFs;
+
+	res = get_fs_entry(argp->file_info->path, NULL);
+	if(res >= 0)
+		return 0x80010011; // Directory already exist
+
+	pDmassFs = create_dmass_file_info(argp->file_info->name);
+	if(pDmassFs == NULL){
+		return -1;
+	}
+
+	pDmassFs->next = ((FapsDmassFs *)argp->pNode->core.dev_info)->next_dir;
+	((FapsDmassFs *)argp->pNode->core.dev_info)->next_dir = pDmassFs;
+
+    res = ksceVfsGetNewNode(argp->pNode->core.mount, argp->pNode->core.mount->pVfsAddParam->pVopTable, 0, &pNode);
+	if(res < 0){
+		return res;
+	}
+
+    res = ksceVfsNodeWaitEventFlag(pNode);
+    if(res < 0){
+    	ksceVfsFreeVnode(pNode);
+		return res;
+	}
+
+	ksceDebugPrintf("\tnew node : %p\n", pNode);
+
+	pDmassFs->pNode = pNode;
+
+    pNode->core.mount           = argp->pNode->core.mount;
+    pNode->core.st_size         = 0LL;
+    pNode->core.dev_info        = pDmassFs;
+    pNode->core.prev_node       = argp->pNode;
+    pNode->core.unk_74          = 1;
+	pNode->core.unk_78          = SCE_S_IXUSR | SCE_S_IWUSR | SCE_S_IRUSR;
+	pNode->core.st_attr         = SCE_SO_IXOTH | SCE_SO_IWOTH | SCE_SO_IROTH;
+    pNode->core.unk_8C          = 0;
+    pNode->core.some_counter_58 = 1;
+
+	*(argp->ppNewNode) = pNode;
+
+	return 0;
+}
+
+int vop_close(SceVfsClose *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tnode : %p\n", argp->node);
+
 	int res;
 
-	res = getFileEntry(args->path_info->path, &pDirEntry);
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return -1;
+
+	res = delete_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
 	if(res < 0)
-		return SCE_ERROR_ERRNO_ENOENT;
-
-	if((args->flags & ~pDirEntry->open_allow_flags) != 0){
-
-		ksceDebugPrintf("Has flags that are not allowed in open\n");
-		ksceDebugPrintf("flags          : 0x%08X\n", args->flags);
-		ksceDebugPrintf("flags(illegal) : 0x%08X\n", (args->flags & ~pDirEntry->open_allow_flags));
-
-		return SCE_ERROR_ERRNO_EPERM;
-	}
-
-	DataPackForSystem_t *pDataPackForSystem;
-
-	create_file_item(args->node, &pDataPackForSystem);
-
-	pDataPackForSystem->data.dir_entry_root = NULL;
-	pDataPackForSystem->data.dir_entry      = pDirEntry;
-	pDataPackForSystem->data.seek           = 0x0LL;
-	pDataPackForSystem->data.size           = pDirEntry->size;
-
-	if(pDirEntry->open_cb != NULL)
-		pDirEntry->open_cb(&pDataPackForSystem->data, pDirEntry->args_for_stat);
-
-	return 0;
-}
-
-int sub_81001E42(void *a1){
-	ksceDebugPrintf("sub_81001E42\n");
-	return 0x80010086;
-}
-
-int vfs_close(SceVfsClose *args){
-
-	DataPack_t *pDataPack = getFileEntryByNode(args->node);
-	if(pDataPack == NULL)
-		return -1;
-
-	return ksceKernelDeleteUid(pDataPack->uid);
-}
-
-int vfs_read(SceVfsRead *args){
-
-	DataPack_t *pDataPack = getFileEntryByNode(args->node);
-	if(pDataPack == NULL)
-		return -1;
-
-	if(pDataPack->dir_entry->read_cb == NULL)
-		return -1;
-
-	return pDataPack->dir_entry->read_cb(pDataPack, pDataPack->dir_entry->args_for_stat, args->data, args->size);
-}
-
-int vfs_write(SceVfsWrite *args){
-
-	DataPack_t *pDataPack = getFileEntryByNode(args->node);
-	if(pDataPack == NULL)
-		return -1;
-
-	if(pDataPack->dir_entry->write_cb == NULL)
-		return -1;
-
-	return pDataPack->dir_entry->write_cb(pDataPack, pDataPack->dir_entry->args_for_stat, args->data, args->size);
-}
-
-int sub_8100006C(){
-	ksceDebugPrintf("sub_8100006C\n");
-	return 0;
-}
-
-int sub_81000070(){
-	ksceDebugPrintf("sub_81000070\n");
-	return 0;
-}
-
-int vfs_dopen(SceVfsDopen *args){
-/*
-	ksceDebugPrintf("dopen\n");
-	ksceDebugPrintf("%s\n", args->opts->path);
-	ksceDebugPrintf("node : 0x%X\n", args->node);
-*/
-	if(args->node == root_node){
-		DataPack_t *pDataPack = getFileEntryByNode(args->node);
-		if(pDataPack == NULL)
-			return 0x80000000;
-
-		if(pDataPack->dir_entry_root == NULL)
-			return 0x80000001;
-
-		pDataPack->dir_entry = pDataPack->dir_entry_root;
-	}else{
-		FileEntry *pDirEntry;
-
-		int res;
-
-		res = getDirEntry(args->opts->path, &pDirEntry);
-		if(res < 0)
-			return -1;
-
-		DataPackForSystem_t *pDataPackForSystem;
-
-		create_file_item(args->node, &pDataPackForSystem);
-
-		pDataPackForSystem->data.dir_entry_root = pDirEntry->next_dir;
-		pDataPackForSystem->data.dir_entry      = pDirEntry->next_dir;
-		pDataPackForSystem->data.seek           = 0x0LL;
-		pDataPackForSystem->data.size           = pDirEntry->size;
-
-		if(pDirEntry->dopen_cb != NULL){
-			pDirEntry->dopen_cb(&pDataPackForSystem->data, NULL);
-			pDirEntry->next_dir = pDataPackForSystem->data.dir_entry_root;
-			pDataPackForSystem->data.dir_entry = pDirEntry->next_dir;
-		}
-	}
-
-	return 0;
-}
-
-int vfs_dclose(SceVfsDclose *args){
-	// ksceDebugPrintf("dclose\n");
-
-	if(args->node == root_node){
-		return 0;
-	}
-
-	DataPack_t *pDataPack = getFileEntryByNode(args->node);
-	if(pDataPack == NULL)
-		return -1;
-
-	return ksceKernelDeleteUid(pDataPack->uid);
-}
-
-int vfs_dread(SceVfsDread *args){
-/*
-	ksceDebugPrintf("dread\n");
-	ksceDebugPrintf("vfs_node : 0x%X\n", args->vfs_node);
-*/
-	DataPack_t *pDataPack = getFileEntryByNode(args->vfs_node);
-	if(pDataPack == NULL)
-		return -1;
-
-	int res = (pDataPack->dir_entry == NULL) ? 0 : 1;
-
-	if(pDataPack->dir_entry == NULL)
 		return res;
 
-	if(pDataPack->dir_entry->get_io_stat_cb == NULL){
-
-		if(pDataPack->dir_entry->stat == NULL){
-			return -1;
-		}
-
-		memcpy(&args->dir->d_stat, pDataPack->dir_entry->stat, sizeof(SceIoStat));
-		args->dir->d_stat.st_size = pDataPack->dir_entry->size;
-	}else{
-		pDataPack->dir_entry->get_io_stat_cb(pDataPack->dir_entry, pDataPack->dir_entry->args_for_stat, &args->dir->d_stat);
-	}
-
-	snprintf(args->dir->d_name, 255, "%s", pDataPack->dir_entry->name);
-	args->dir->d_private = NULL;
-	args->dir->dummy = 0;
-
-	pDataPack->dir_entry = pDataPack->dir_entry->next;
-
-	return res;
+	return 0;
 }
 
-extern const SceIoStat stat_file_tpl;
+// vop_lookup
+int vop_part_init(SceVfsPartInit *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
 
-int vfs_get_stat(SceVfsStat *args){
-	// ksceDebugPrintf("sub_get_stat\n");
+/*
+ * 0x40 : rename
+ */
+	ksceDebugPrintf("\tflags=0x%X path=\"%s\" name=\"%s\" %s\n", argp->flags, argp->path_info->path, argp->path_info->name, argp->path_info->msg);
 
-	if(args->node == root_node){
-		memcpy(args->stat, &stat_file_tpl, sizeof(SceIoStat));
-		args->stat->st_size = 0x100000LL;
-		return 0;
+	if(argp->path_info != NULL && 0){
+		ksceDebugPrintf("\topt 0x0=%s\n", argp->path_info->name);
+		ksceDebugPrintf("\topt 0x4=%s\n", argp->path_info->msg);
+		ksceDebugPrintf("\topt 0x8=%s\n", argp->path_info->path);
+		ksceDebugPrintf("\topt 0xC=%s\n", argp->path_info->name2);
 	}
-
-	DataPack_t *pDataPack = getFileEntryByNode(args->node->prev_node);
-	if(pDataPack == NULL)
-		return -1;
-
-	const FileEntry *dir_entry = pDataPack->dir_entry_root;
-	while(dir_entry != NULL){
-		if(strcmp(args->opts->path, dir_entry->name) == 0){
-			if(dir_entry->get_io_stat_cb == NULL){
-				memcpy(args->stat, dir_entry->stat, sizeof(SceIoStat));
-				args->stat->st_size = dir_entry->size;
-			}else{
-				dir_entry->get_io_stat_cb(dir_entry, dir_entry->args_for_stat, args->stat);
-			}
-
-			return 0;
-		}
-		dir_entry = dir_entry->next;
-	}
-
-	return -1;
-}
-
-int vfs_part_init(SceVfsPartInit *a1){
 
 	int res;
 	SceVfsNode *pNode = NULL;
-/*
-	ksceDebugPrintf("vfs_part_init\n");
-	ksceDebugPrintf("%s\n", *(char **)(a1->opt));
-	ksceDebugPrintf("0x%X\n", *(int *)(a1->opt + 4));
 
-	if(*(int *)(a1->opt + 4) != 3) // file name len check?
-		return 0x80010016;
-*/
-	if(a1->node->mount == NULL)
+	res = check_name(argp->path_info->name);
+	if(res == 0x80020005)
+		return 0x80010002;
+
+	if(res < 0)
+		return res;
+
+	if(argp->node->core.mount == NULL)
 		return 0x80010016;
 
-	res = ksceVfsGetNewNode(a1->node->mount, *(uint32_t *)(*(uint32_t *)(a1->node->mount + 0x5C) + 0x14), 0, &pNode);
+	FapsDmassFs *pEntry;
+
+	res = get_fs_entry(argp->path_info->path, &pEntry);
 	if(res < 0){
-		ksceDebugPrintf("sceVfsGetNewNode : 0x%X\n", res);
+		ksceDebugPrintf("\tget_fs_entry : 0x%X\n", res);
 		return res;
 	}
 
-	if(pNode == NULL)
-		return 0x80010016;
-
-	// ksceDebugPrintf("NewNode : 0x%X\n", pNode);
-
-	ksceVfsNodeWaitEventFlag(pNode);
-
-	pNode->dev_info  = NULL;
-	pNode->mount     = a1->node->mount;
-	pNode->prev_node = a1->node;
-	pNode->unk_74    = 1;
-	pNode->unk_78    = 0x2010;
-
-	if(getDirEntry(*(char **)(a1->opt), NULL) == 0)
-		pNode->unk_78 = SCE_S_IFDIR | SCE_S_IWUSR | SCE_S_IRUSR;
-
-	*a1->new_node = pNode;
-
-	return 0;
-}
-
-int vfs_get_stat_by_fd(SceVfsStatByFd *args){
-	// ksceDebugPrintf("vfs_get_stat_by_fd\n");
-
-	DataPack_t *pDataPack = getFileEntryByNode(args->node);
-	if(pDataPack == NULL)
-		return -1;
-
-	if(pDataPack->dir_entry->get_io_stat_cb == NULL){
-
-		memcpy(args->stat, pDataPack->dir_entry->stat, sizeof(SceIoStat));
-
-		args->stat->st_size = pDataPack->dir_entry->size;
-	}else{
-		pDataPack->dir_entry->get_io_stat_cb(pDataPack->dir_entry, pDataPack->dir_entry->args_for_stat, args->stat);
+	res = ksceVfsGetNewNode(argp->node->core.mount, argp->node->core.mount->pVfsAddParam->pVopTable, 0, &pNode);
+	if(res < 0){
+		ksceDebugPrintf("\tsceVfsGetNewNode : 0x%X\n", res);
+		return res;
 	}
 
-	return -1;
-}
+	res = ksceVfsNodeWaitEventFlag(pNode);
+	if(res < 0){
+		ksceVfsFreeVnode(pNode);
+		return res;
+	}
 
-int vfs_part_deinit(void *a1){
-	ksceDebugPrintf("sub_part_deinit\n");
-	return 0x80010086;
-}
+	pEntry->pNode = pNode;
 
-int vfs_sync(void *a1){
-	ksceDebugPrintf("sub_sync\n");
+	pNode->core.dev_info  = pEntry;
+	pNode->core.mount     = argp->node->core.mount;
+	pNode->core.prev_node = argp->node;
+	pNode->core.unk_74    = 1;
+	pNode->core.st_attr   = pEntry->stat.st_attr;
+	pNode->core.st_size   = pEntry->stat.st_size;
+    pNode->core.unk_8C    = 0;
+    pNode->core.some_counter_58 = 1;
+
+	if(SCE_S_ISDIR(pEntry->stat.st_mode)){
+		pNode->core.unk_78 = SCE_S_IWUSR;
+	}else{
+		pNode->core.unk_78 = SCE_S_IXUSR;
+	}
+
+	*(argp->new_node) = pNode;
+
+	ksceDebugPrintf("\t%s out\n", __FUNCTION__);
+
 	return 0;
 }
 
-const SceVfsTable2 vfs_table2_2 = {
-	.func00 = vfs_open,
-	.func04 = sub_81001E42,
-	.func08 = vfs_close,
-	.func0C = vfs_part_init,
-	.func10 = vfs_read,
-	.func14 = vfs_write,
-	.func18 = NULL,
-	.func1C = sub_8100006C, // Ioctl
-	.func20 = vfs_part_deinit,
-	.func24 = NULL,
-	.func28 = NULL,
-	.func2C = vfs_dopen,
-	.func30 = vfs_dclose,
-	.func34 = vfs_dread,
-	.func38 = vfs_get_stat,
-	.func3C = NULL,
-	.func40 = NULL,
-	.func44 = NULL,
-	.func48 = NULL,
-	.func4C = NULL,
-	.func50 = sub_81000070,
-	.func54 = NULL,
-	.func58 = NULL,
-	.func5C = vfs_sync,
-	.func60 = vfs_get_stat_by_fd,
-	.func64 = NULL,
-	.func64 = NULL,
-	.func68 = NULL,
-	.func70 = NULL
+#define FAPS_DMASS_BLOCK_SIZE (0x200)
+#define FAPS_DMASS_BLOCK_ALIGN(__value__) (((__value__) + (FAPS_DMASS_BLOCK_SIZE - 1)) & ~(FAPS_DMASS_BLOCK_SIZE - 1))
+
+SceSSize vop_read(SceVfsRead *argp){
+
+	const void *lr;
+	asm volatile("mov %0, lr\n":"=r"(lr));
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+
+	ksceDebugPrintf("%s(%p)\n", __FUNCTION__, lr);
+	ksceDebugPrintf("\tdata=%p nbyte=0x%08X\n", argp->data, argp->nbyte);
+	ksceDebugPrintf("\tcurrent size:offset=0x%08llX:0x%08llX\n", argp->node->core.st_size, argp->pVfsFileObject->offset);
+
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return -1;
+
+	if(pEntry->stat.st_size > 0xFFFFFFFF || argp->pVfsFileObject->offset > 0xFFFFFFFF)
+		return -1;
+
+	if(argp->node != argp->pVfsFileObject->node)
+		return -3;
+
+	SceSize r_size = argp->nbyte;
+
+	if(r_size == 0xdeadbeef)
+		return -2;
+
+	SceOff remain_size = pEntry->stat.st_size - argp->pVfsFileObject->offset;
+	if(remain_size > 0xFFFFFFFF || remain_size < 0LL)
+		return -1;
+
+	ksceDebugPrintf("\tremain_size=0x%llX\n", remain_size);
+
+	if(r_size >= (SceSize)remain_size)
+		r_size = (SceSize)remain_size;
+
+	memcpy(argp->data, pEntry->data + argp->pVfsFileObject->offset, r_size);
+
+	ksceDebugPrintf("\tr_size=0x%X\n", r_size);
+
+	argp->pVfsFileObject->offset += r_size;
+
+	return r_size;
+}
+
+SceSSize vop_write(SceVfsWrite *argp){
+
+	const void *lr;
+	asm volatile("mov %0, lr\n":"=r"(lr));
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+
+	ksceDebugPrintf("%s(%p)\n", __FUNCTION__, lr);
+	ksceDebugPrintf("\tdata=%p nbyte=0x%08X\n", argp->data, argp->nbyte);
+	ksceDebugPrintf("\tcurrent size  =0x%llX\n", argp->node->core.st_size);
+	ksceDebugPrintf("\tcurrent offset=0x%llX\n", argp->pVfsFileObject->offset);
+
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return -1;
+
+	if(argp->node->core.st_size > 0xFFFFFFFF || argp->pVfsFileObject->offset > 0xFFFFFFFF)
+		return -1;
+
+	if(argp->node != argp->pVfsFileObject->node)
+		return -3;
+
+	SceSize w_size = argp->nbyte;
+
+	SceOff size_align = FAPS_DMASS_BLOCK_ALIGN(pEntry->stat.st_size);
+	if(FAPS_DMASS_BLOCK_ALIGN(pEntry->stat.st_size + w_size) > size_align){
+
+		ksceDebugPrintf("\tGrow data\n");
+
+		void *temp_data = dmass_malloc(FAPS_DMASS_BLOCK_ALIGN(pEntry->stat.st_size + w_size));
+		if(temp_data == NULL)
+			return -2;
+
+		memcpy(temp_data, pEntry->data, (size_t)pEntry->stat.st_size);
+
+		dmass_free(pEntry->data);
+		pEntry->data = temp_data;
+	}
+
+	memcpy(pEntry->data + argp->pVfsFileObject->offset, argp->data, w_size);
+
+	argp->pVfsFileObject->offset += w_size;
+
+	if(argp->pVfsFileObject->offset >= pEntry->stat.st_size){
+		pEntry->stat.st_size     = argp->pVfsFileObject->offset;
+		argp->node->core.st_size = argp->pVfsFileObject->offset;
+	}
+
+	return w_size;
+}
+
+SceOff vop_lseek(SceVopLseekArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\toffset=0x%llX where=%d\n", argp->offset, argp->where);
+
+	SceOff offset;
+
+	if(argp->where == SCE_SEEK_SET){
+		offset = argp->offset;
+	}else if(argp->where == SCE_SEEK_CUR){
+		offset = argp->pVfsFileObject->offset + argp->offset;
+	}else if(argp->where == SCE_SEEK_END){
+		offset = argp->node->core.st_size + argp->offset;
+	}else{
+		return 0xFFFFFFFF80010016;
+	}
+
+	if(offset > argp->node->core.st_size || offset < 0LL)
+		return 0xFFFFFFFF80010016;
+
+	argp->pVfsFileObject->offset = offset;
+
+	return offset;
+}
+
+int vop_ioctl(SceVopIoctlArgs *argp){
+	return 0x80010030;
+}
+
+int vop_remove(SceVfsPartDeinit *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tname=%s\n", argp->file_info->name);
+	ksceDebugPrintf("\t    =%d\n", argp->file_info->name_len);
+	ksceDebugPrintf("\tpath=%s\n", argp->file_info->path);
+
+	int res;
+	FapsDmassFs *pEntry;
+
+	res = get_fs_entry(argp->file_info->path, &pEntry);
+	if(res < 0)
+		return 0x80010002;
+
+	if(!SCE_S_ISREG(pEntry->stat.st_mode))
+		return -1; // Not file
+
+	FapsDmassFs **ppFsInfo = &(((FapsDmassFs *)argp->node->core.dev_info)->next_dir);
+	while(*ppFsInfo != NULL){
+		if(pEntry == *ppFsInfo){
+			*ppFsInfo = (*ppFsInfo)->next;
+
+			res = delete_dmass_info(pEntry);
+			pEntry = NULL;
+
+			return res;
+		}
+
+		ppFsInfo = &(*ppFsInfo)->next;
+	}
+
+	return 0x80010002;
+}
+
+int vop_mkdir(SceVopMkdirArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tnode=%p mode=0%o /%s <- /%s\n", argp->node, argp->mode, ((FapsDmassFs *)argp->node->core.dev_info)->name, argp->file_info->name);
+
+	int res;
+	SceVfsNode *pNode = NULL;
+	FapsDmassFs *pDmassFs;
+
+	if(!SCE_S_ISDIR(((FapsDmassFs *)argp->node->core.dev_info)->stat.st_mode))
+		return 0x80010014; // Not directory
+
+	res = get_fs_entry(argp->file_info->path, NULL);
+	if(res >= 0)
+		return 0x80010011; // Directory already exist
+
+	pDmassFs = create_dmass_dir_info(argp->file_info->name);
+	if(pDmassFs == NULL){
+		return -1;
+	}
+
+	pDmassFs->next     = ((FapsDmassFs *)argp->node->core.dev_info)->next_dir;
+	((FapsDmassFs *)argp->node->core.dev_info)->next_dir = pDmassFs;
+
+    res = ksceVfsGetNewNode(argp->node->core.mount, argp->node->core.mount->pVfsAddParam->pVopTable, 0, &pNode);
+	if(res < 0){
+		return res;
+	}
+
+    res = ksceVfsNodeWaitEventFlag(pNode);
+    if(res < 0){
+    	ksceVfsFreeVnode(pNode);
+		return res;
+	}
+
+	pDmassFs->pNode = pNode;
+
+    pNode->core.mount           = argp->node->core.mount;
+    pNode->core.st_size         = 0LL;
+    pNode->core.dev_info        = pDmassFs;
+    pNode->core.prev_node       = argp->node;
+    pNode->core.unk_74          = 1;
+    pNode->core.unk_78          = SCE_S_IWUSR;
+	pNode->core.st_attr         = SCE_SO_IXOTH | SCE_SO_IWOTH | SCE_SO_IROTH | SCE_SO_IFDIR;
+    pNode->core.unk_8C          = 0;
+    pNode->core.some_counter_58 = 1;
+
+	*(argp->pNewNode) = pNode;
+
+	return 0;
+}
+
+int vop_rmdir(SceVopRmdirArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tname=%s\n", argp->file_info->name);
+	ksceDebugPrintf("\tpath=%s\n", argp->file_info->path);
+
+	int res;
+	FapsDmassFs *pEntry;
+
+	res = get_fs_entry(argp->file_info->path, &pEntry);
+	if(res < 0)
+		return res;
+
+	if(pEntry->next_dir != NULL)
+		return 0x80010011; // Directory is have more entries
+
+	if(!SCE_S_ISDIR(pEntry->stat.st_mode))
+		return 0x80010014; // Not directory
+
+	FapsDmassFs **ppFsInfo = &(((FapsDmassFs *)argp->node->core.dev_info)->next_dir);
+	while(*ppFsInfo != NULL){
+		if(pEntry == *ppFsInfo){
+			*ppFsInfo = (*ppFsInfo)->next;
+
+			res = delete_dmass_info(pEntry);
+			pEntry = NULL;
+
+			return res;
+		}
+
+		ppFsInfo = &(*ppFsInfo)->next;
+	}
+
+	return 0x80010002;
+}
+
+int vop_dopen(SceVfsDopen *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\t%s (%d)\n", argp->file_info->name, argp->file_info->name_len);
+	ksceDebugPrintf("\t%s\n", argp->file_info->path);
+	ksceDebugPrintf("\tdev_info=%p\n", argp->node->core.dev_info);
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = create_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return 0x80010016;
+
+	pObject->current = pEntry->next_dir;
+
+	return 0;
+}
+
+int vop_dclose(SceVfsDclose *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	int res;
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return 0x80010016;
+
+	res = delete_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(res < 0)
+		return 0x80010016;
+
+	return 0;
+}
+
+int vop_dread(SceVfsDread *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return 0x80010016;
+
+	if(pObject->current == NULL)
+		return 0;
+
+	argp->dir->d_name[0xFF] = 0;
+	strncpy(argp->dir->d_name, pObject->current->name, 0xFF);
+	memcpy(&(argp->dir->d_stat), &(pObject->current->stat), sizeof(SceIoStat));
+
+	pObject->current = pObject->current->next;
+
+	return 1;
+}
+
+int vop_get_stat(SceVfsStat *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	int res;
+	FapsDmassFs *pEntry;
+
+	res = get_fs_entry(argp->file_info->path, &pEntry);
+	if(res < 0)
+		return res;
+
+	memcpy(argp->stat, &(pEntry->stat), sizeof(*(argp->stat)));
+
+	return 0;
+}
+
+int vop_chstat(SceVopChstatArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	int res;
+	FapsDmassFs *pEntry;
+
+	res = get_fs_entry(argp->file_info->path, &pEntry);
+	if(res < 0)
+		return res;
+
+	if((argp->bit & SCE_CST_MODE) != 0){
+
+		if((pEntry->stat.st_mode & SCE_S_IFMT) != (argp->stat->st_mode & SCE_S_IFMT))
+			return -1;
+
+		pEntry->stat.st_mode = argp->stat->st_mode;
+	}
+
+	if((argp->bit & SCE_CST_SIZE) != 0){
+		if(argp->stat->st_size < 0LL)
+			return -1;
+
+		if(argp->stat->st_size == 0LL){
+			dmass_free(pEntry->data);
+			pEntry->data = NULL;
+		}else{
+			if(argp->stat->st_size > 0xFFFFFFFF)
+				return -1;
+
+			void *temp_data = dmass_malloc((SceSize)argp->stat->st_size);
+			if(temp_data == NULL)
+				return -2;
+
+			memcpy(temp_data, pEntry->data, (size_t)pEntry->stat.st_size);
+
+			dmass_free(pEntry->data);
+			pEntry->data = temp_data;
+		}
+
+		pEntry->stat.st_size     = argp->stat->st_size;
+		argp->node->core.st_size = argp->stat->st_size;
+	}
+
+	if((argp->bit & SCE_CST_CT) != 0)
+		memcpy(&(pEntry->stat.st_ctime), &(argp->stat->st_ctime), sizeof(SceDateTime));
+
+	if((argp->bit & SCE_CST_AT) != 0)
+		memcpy(&(pEntry->stat.st_atime), &(argp->stat->st_atime), sizeof(SceDateTime));
+
+	if((argp->bit & SCE_CST_MT) != 0)
+		memcpy(&(pEntry->stat.st_mtime), &(argp->stat->st_mtime), sizeof(SceDateTime));
+
+	return 0;
+}
+
+int vop_rename(SceVopRenameArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	if(argp->node->core.mount != argp->node2->core.mount)
+		return 0x80010001;
+
+	ksceDebugPrintf("\told name %s\n", argp->file_info_old->name);
+	ksceDebugPrintf("\told      %d\n", argp->file_info_old->name_len);
+	ksceDebugPrintf("\told path %s\n", argp->file_info_old->path);
+
+	ksceDebugPrintf("\tnew name %s\n", argp->file_info_new->name);
+	ksceDebugPrintf("\tnew      %d\n", argp->file_info_new->name_len);
+	ksceDebugPrintf("\tnew path %s\n", argp->file_info_new->path);
+
+	ksceDebugPrintf("\tnode  %p\n", argp->node);
+	ksceDebugPrintf("\tnode2 %p\n", argp->node2);
+	ksceDebugPrintf("\tnode3 %p\n", argp->node3);
+
+	int res;
+	FapsDmassFs *pEntryOld;
+
+	res = get_fs_entry(argp->file_info_old->path, &pEntryOld);
+	if(res < 0)
+		return res;
+
+	FapsDmassFs **ppFsInfo = &(((FapsDmassFs *)argp->node->core.dev_info)->next_dir);
+	while(*ppFsInfo != NULL){
+		if(pEntryOld == *ppFsInfo){
+
+			SceVfsNode *pNode = NULL;
+
+    		res = ksceVfsGetNewNode(argp->node->core.mount, argp->node->core.mount->pVfsAddParam->pVopTable, 0, &pNode);
+		    if(res < 0)
+				return res;
+
+		    res = ksceVfsNodeWaitEventFlag(pNode);
+		    if(res < 0){
+    			ksceVfsFreeVnode(pNode);
+				return res;
+			}
+
+			*ppFsInfo = (*ppFsInfo)->next;
+
+			pEntryOld->next = ((FapsDmassFs *)argp->node3->core.dev_info)->next_dir;
+			((FapsDmassFs *)argp->node3->core.dev_info)->next_dir = pEntryOld;
+
+			dmass_free(pEntryOld->name);
+			pEntryOld->name = name_cpy(argp->file_info_new->name);
+
+			ksceDebugPrintf("%p\n", pEntryOld->pNode);
+
+		    pNode->core.mount           = pEntryOld->pNode->core.mount;
+		    pNode->core.st_size         = pEntryOld->pNode->core.st_size;
+		    pNode->core.dev_info        = pEntryOld;
+		    pNode->core.prev_node       = pEntryOld->pNode;
+		    pNode->core.unk_74          = 1;
+		    pNode->core.unk_78          = pEntryOld->pNode->core.unk_78;
+			pNode->core.st_attr         = pEntryOld->pNode->core.st_attr;
+		    pNode->core.unk_8C          = pEntryOld->pNode->core.unk_8C;
+		    pNode->core.some_counter_58 = 1;
+
+			pEntryOld->pNode = pNode;
+
+			*(argp->ppNewNode) = pNode;
+
+			return 0;
+		}
+
+		ppFsInfo = &(*ppFsInfo)->next;
+	}
+
+	return 0x80010002;
+}
+
+SceSSize vop_pread(SceVopPreadArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return -1;
+
+	if(argp->node->core.st_size > 0xFFFFFFFF || argp->offset > 0xFFFFFFFF)
+		return -1;
+
+	if(argp->offset > argp->node->core.st_size)
+		return -1;
+
+	if(argp->node != argp->pVfsFileObject->node)
+		return -3;
+
+	if(argp->offset >= argp->node->core.st_size)
+		return 0;
+
+	SceSize r_size = argp->nbyte;
+
+	SceOff remain_size = argp->node->core.st_size - argp->offset;
+	if(r_size >= (SceSize)remain_size)
+		r_size = (SceSize)remain_size;
+
+	memcpy(argp->data, pEntry->data + argp->offset, r_size);
+
+	return r_size;
+}
+
+SceSSize vop_pwrite(SceVopPwriteArgs *argp){
+
+	const void *lr;
+	asm volatile("mov %0, lr\n":"=r"(lr));
+
+	ksceDebugPrintf("%s(%p)\n", __FUNCTION__, lr);
+	ksceDebugPrintf("\tdata=%p nbyte=0x%08X offset=0x%08llX\n", argp->data, argp->nbyte, argp->offset);
+	ksceDebugPrintf("\tcurrent size  =0x%llX\n", argp->node->core.st_size);
+	ksceDebugPrintf("\tcurrent offset=0x%llX\n", argp->pVfsFileObject->offset);
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	FapsDmassFsX *pObject = search_dmass_ctl_data(pEntry, (int)(argp->pVfsFileObject));
+	if(pObject == NULL)
+		return -1;
+
+	if(argp->node->core.st_size > 0xFFFFFFFF || argp->offset > 0xFFFFFFFF)
+		return -1;
+
+	if(argp->offset > argp->node->core.st_size)
+		return -1;
+
+	if(argp->node != argp->pVfsFileObject->node)
+		return -3;
+
+	SceSize w_size = argp->nbyte;
+
+	SceOff size_align = FAPS_DMASS_BLOCK_ALIGN(pEntry->stat.st_size);
+	if(FAPS_DMASS_BLOCK_ALIGN(pEntry->stat.st_size + w_size) > size_align){
+
+		ksceDebugPrintf("\tGrow data\n");
+
+		void *temp_data = dmass_malloc(FAPS_DMASS_BLOCK_ALIGN(pEntry->stat.st_size + w_size));
+		if(temp_data == NULL)
+			return -2;
+
+		memcpy(temp_data, pEntry->data, (size_t)pEntry->stat.st_size);
+
+		dmass_free(pEntry->data);
+		pEntry->data = temp_data;
+	}
+
+	memcpy(pEntry->data + argp->offset, argp->data, w_size);
+
+	if((argp->offset + w_size) > pEntry->stat.st_size){
+		pEntry->stat.st_size     = argp->offset + w_size;
+		argp->node->core.st_size = argp->offset + w_size;
+	}
+
+	return w_size;
+}
+
+int vop_inactive(SceVopInactiveArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	ksceDebugPrintf("\tnode=%p\n", argp->node);
+
+	if(argp->node == NULL)
+		return 0x80010016;
+
+	FapsDmassFs *pEntry = ((FapsDmassFs *)argp->node->core.dev_info);
+	if(pEntry != NULL){
+		pEntry->pNode = NULL;
+	}
+
+	argp->node->core.dev_info = NULL;
+
+	return 0;
+}
+
+int vop_func54(void *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	return 0x80010016;
+}
+
+int vop_func58(void *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	return 0x80010016;
+}
+
+int vop_sync(SceVopSyncArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	if(argp->flags != 0)
+		return 0x8002000A; // SCE_KERNEL_ERROR_INVALID_FLAGS
+
+	return 0;
+}
+
+int vop_get_stat_by_fd(SceVfsStatByFd *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	if(argp->node->core.dev_info == NULL)
+		return -2;
+
+	memcpy(argp->stat, &(((FapsDmassFs *)argp->node->core.dev_info)->stat), sizeof(*(argp->stat)));
+
+	return 0;
+}
+
+int vop_chstat_by_fd(SceVopChstatByFdArgs *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+
+	FapsDmassFs *pEntry;
+
+	pEntry = ((FapsDmassFs *)argp->pNode->core.dev_info);
+	if(pEntry == NULL)
+		return -1;
+
+	if((argp->bit & SCE_CST_MODE) != 0){
+
+		if((pEntry->stat.st_mode & SCE_S_IFMT) != (argp->stat->st_mode & SCE_S_IFMT))
+			return -1;
+
+		pEntry->stat.st_mode = argp->stat->st_mode;
+	}
+
+	if((argp->bit & SCE_CST_SIZE) != 0){
+		if(argp->stat->st_size < 0LL)
+			return -1;
+
+		if(argp->stat->st_size == 0LL){
+			dmass_free(pEntry->data);
+			pEntry->data = NULL;
+		}else{
+			if(argp->stat->st_size > 0xFFFFFFFF)
+				return -1;
+
+			void *temp_data = dmass_malloc((SceSize)argp->stat->st_size);
+			if(temp_data == NULL)
+				return -2;
+
+			memcpy(temp_data, pEntry->data, (size_t)pEntry->stat.st_size);
+
+			dmass_free(pEntry->data);
+			pEntry->data = temp_data;
+		}
+
+		pEntry->stat.st_size     = argp->stat->st_size;
+		argp->pNode->core.st_size = argp->stat->st_size;
+	}
+
+	if((argp->bit & SCE_CST_CT) != 0)
+		memcpy(&(pEntry->stat.st_ctime), &(argp->stat->st_ctime), sizeof(SceDateTime));
+
+	if((argp->bit & SCE_CST_AT) != 0)
+		memcpy(&(pEntry->stat.st_atime), &(argp->stat->st_atime), sizeof(SceDateTime));
+
+	if((argp->bit & SCE_CST_MT) != 0)
+		memcpy(&(pEntry->stat.st_mtime), &(argp->stat->st_mtime), sizeof(SceDateTime));
+
+	return 0;
+}
+
+int vop_func68(void *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	return 0x80010016;
+}
+
+int vop_func6C(void *argp){
+	ksceDebugPrintf("%s\n", __FUNCTION__);
+	return 0x80010016;
+}
+
+const SceVfsTable vfs_table_test = {
+	.func00       = vfs_mount_func,
+	.func04       = vfs_umount_func,
+	.vfs_set_root = vfs_set_root,
+	.func0C       = NULL,
+	.func10       = NULL,
+	.func14       = NULL,
+	.func18       = NULL,
+	.func1C       = NULL,
+	.func20       = vfs_init,
+	.func24       = vfs_deinit,
+	.func28       = NULL,
+	.vfs_devctl   = vfs_devctl,
+	.func30       = NULL // PathElme
 };
+
+const SceVopTable vop_table_test = {
+	.vop_open           = vop_open,
+	.vop_create         = vop_create,
+	.vop_close          = vop_close,
+	.vop_lookup         = vop_part_init,// ok?
+	.vop_read           = vop_read,
+	.vop_write          = vop_write,
+	.vop_lseek          = vop_lseek,
+	.vop_ioctl          = vop_ioctl,
+	.vop_remove         = vop_remove,
+	.vop_mkdir          = vop_mkdir,
+	.vop_rmdir          = vop_rmdir,
+	.vop_dopen          = vop_dopen,
+	.vop_dclose         = vop_dclose,
+	.vop_dread          = vop_dread,
+	.vop_get_stat       = vop_get_stat,
+	.vop_chstat         = vop_chstat,
+	.vop_rename         = vop_rename,
+	.func44             = NULL,
+	.vop_pread          = vop_pread,
+	.vop_pwrite         = vop_pwrite,
+	.vop_inactive       = vop_inactive,// ok?
+	.func54             = vop_func54,// TODO
+	.func58             = vop_func58,// TODO
+	.vop_sync           = vop_sync,
+	.vop_get_stat_by_fd = vop_get_stat_by_fd,
+	.vop_chstat_by_fd   = vop_chstat_by_fd,
+	.func68             = vop_func68,// TODO
+	.func6C             = vop_func6C,// TODO
+	.func70             = NULL
+};
+
+const SceVfsMount2 vfs_mount2_devkit_test = {
+	.unit      = FAPS_DMASS_DEVICE_NAME,
+	.device1   = "faps_dmass_fs",
+	.device2   = "faps_dmass_fs",
+	.device3   = NULL,
+	.data_0x10 = 0
+};
+
+const SceVfsMountParam vfs_mount_devkit_test = {
+	.device    = "/md",
+	.data_0x04 = 0,
+	// .data_0x08 = 0x03000010, // cannot read? seems write only.
+	.data_0x08 = 0x03000004,
+	.data_0x0C = 0x00008003,
+	.data_0x10 = "faps_dmass_fs",
+	.data_0x14 = 0,
+	.pVfsMount2 = &vfs_mount2_devkit_test,
+	.data_0x1C = 0
+};
+
+#define TEST_MEMORY_SIZE (0x400000)
+
+int dmass_create_process_resource(SceUID pid){
+
+	FapsDmassProcessContext *pContext;
+
+	int res = dmass_create_proc_context(pid, &pContext);
+	if(res >= 0){
+		ksceDebugPrintf("Proc context ok\n");
+	}
+
+	ksceDebugPrintf("pid=0x%08X\n", ksceKernelGetProcessId());
+	ksceDebugPrintf("TLS pid=0x%08X\n", ksceKernelGetProcessIdFromTLS());
+
+	pContext->memid = ksceKernelAllocMemBlock("dmass_test_memory", 0x1050D006, TEST_MEMORY_SIZE, NULL);
+	// pContext->memid = ksceKernelAllocMemBlock("dmass_test_memory", 0x10C0D006, 0x100000, NULL);
+	ksceDebugPrintf("sceKernelAllocMemBlock = 0x%X\n", pContext->memid);
+	if(pContext->memid >= 0){
+		ksceKernelGetMemBlockBase(pContext->memid, &pContext->membase);
+
+		uintptr_t paddr;
+		res = ksceKernelVAtoPA(pContext->membase, &paddr);
+		if(res >= 0){
+			ksceDebugPrintf("paddr=%p\n", paddr);
+		}
+	}
+
+/*
+	if(pid != SCE_GUID_KERNEL_PROCESS_ID){
+		pContext->heap_id = -1;
+	}else{
+		pContext->heap_id = -1;
+	}
+*/
+
+	return 0;
+}
+
+int dmass_delete_process_resource(SceUID pid){
+
+	int res;
+	FapsDmassProcessContext *pContext;
+
+	res = dmass_search_proc_context(SCE_GUID_KERNEL_PROCESS_ID, &pContext);
+	if(res >= 0 && pContext->membase != NULL){
+		memset(pContext->membase, 0xAA, TEST_MEMORY_SIZE);
+	}
+
+	res = dmass_search_proc_context(pid, &pContext);
+	if(res < 0){
+		return res;
+	}
+
+	if(pContext->memid >= 0){
+		memset(pContext->membase, 0xAA, TEST_MEMORY_SIZE);
+		ksceKernelFreeMemBlock(pContext->memid);
+		pContext->memid = -1;
+	}
+
+	res = dmass_delete_proc_context(pid);
+	if(res < 0){
+		return res;
+	}
+
+	pContext = NULL;
+
+	ksceDebugPrintf("Proc context del ok\n");
+
+	return 0;
+}
+
+int dmass_proc_create(SceUID pid, SceProcEventInvokeParam2 *a2, int a3){
+	dmass_create_process_resource(pid);
+	return 0;
+}
+
+int dmass_proc_exit(SceUID pid, SceProcEventInvokeParam1 *a2, int a3){
+	dmass_delete_process_resource(pid);
+	return 0;
+}
+
+int dmass_proc_kill(SceUID pid, SceProcEventInvokeParam1 *a2, int a3){
+	dmass_delete_process_resource(pid);
+	return 0;
+}
 
 void _start() __attribute__ ((weak, alias("module_start")));
 int module_start(SceSize args, void *argp){
 
-	if(GetExport("SceKernelModulemgr", 0xC445FA63, 0xD269F915, &sceKernelGetModuleInfo) < 0)
-	if(GetExport("SceKernelModulemgr", 0x92C9FFC2, 0xDAA90093, &sceKernelGetModuleInfo) < 0)
+	int res;
+
+	res = dmass_heap_init();
+	if(res < 0)
 		return SCE_KERNEL_START_FAILED;
 
-	if(GetExport("SceKernelModulemgr", 0xC445FA63, 0x97CF7B4E, &sceKernelGetModuleList) < 0)
-	if(GetExport("SceKernelModulemgr", 0x92C9FFC2, 0xB72C75A4, &sceKernelGetModuleList) < 0)
-		return SCE_KERNEL_START_FAILED;
+/*
+	SceProcEventHandler proc_handler;
+	proc_handler.size           = sizeof(proc_handler);
+	proc_handler.create         = dmass_proc_create;
+	proc_handler.exit           = dmass_proc_exit;
+	proc_handler.kill           = dmass_proc_kill;
+	proc_handler.stop           = NULL;
+	proc_handler.start          = NULL;
+	proc_handler.switch_process = NULL;
 
-	if(GetExport("SceSysmem", 0x63A519E5, 0xDF0288D7, &sceKernelCreateUidObj) < 0)
-	if(GetExport("SceSysmem", 0x02451F0F, 0xFB6390CE, &sceKernelCreateUidObj) < 0)
-		return SCE_KERNEL_START_FAILED;
+	ksceKernelRegisterProcEventHandler("FapsDmassProcEvent", &proc_handler, 0);
+*/
 
-	init_itemmgr();
+	vfs_add.pVfsTable  = &vfs_table_test;
+	vfs_add.device     = "faps_dmass_fs";
+	vfs_add.data_0x08  = 0x11;
+	vfs_add.is_mounted = 0;
+	vfs_add.data_0x10  = 0x10;
+	vfs_add.pVopTable  = &vop_table_test;
+	vfs_add.data_0x18  = 0;
 
-	heap_uid = ksceKernelCreateHeap("FapsVfsHost0", 0x10000, NULL);
-
-	init_l2_cache_reg();
-
-	if(ksceSblAimgrIsTool() == 0){
-		ksceVfsUnmount(&vfs_umount);
-
-		ksceVfsDeleteVfs("bsod_dummy_host_fs", NULL);
-
-		vfs_add.func_ptr1 = &vfs_table_2;
-		vfs_add.device    = "faps_dummy_host_fs";
-		vfs_add.data_0x08 = 0x11;
-		vfs_add.data_0x0C = 0;
-		vfs_add.data_0x10 = 0x10;
-		vfs_add.func_ptr2 = &vfs_table2_2;
-		vfs_add.data_0x18 = 0;
-
-		ksceVfsAddVfs(&vfs_add);
-
-		ksceVfsMount(&vfs_mount);
-	}else{
-		if(ksceSysrootIsManufacturingMode() != 0){
-			ksceDebugPrintf("This devkit already mounted sd0:\n");
-			return SCE_KERNEL_START_FAILED;
-		}
-
-		vfs_add.func_ptr1 = &vfs_table_2;
-		vfs_add.device    = "faps_dummy_host_fs";
-		vfs_add.data_0x08 = 0x11;
-		vfs_add.data_0x0C = 0;
-		vfs_add.data_0x10 = 0x10;
-		vfs_add.func_ptr2 = &vfs_table2_2;
-		vfs_add.data_0x18 = 0;
-
-		ksceVfsAddVfs(&vfs_add);
-
-		ksceVfsMount(&vfs_mount_devkit);
+	res = ksceVfsAddVfs(&vfs_add);
+	if(res < 0){
+		ksceDebugPrintf("%s=0x%X\n", "sceVfsAddVfs", res);
+		return SCE_KERNEL_START_SUCCESS;
 	}
 
-	return SCE_KERNEL_START_SUCCESS;
-}
+	res = ksceVfsMount(&vfs_mount_devkit_test);
+	if(res < 0){
+		ksceDebugPrintf("%s=0x%X\n", "sceVfsMount", res);
+		return SCE_KERNEL_START_SUCCESS;
+	}
 
-int module_stop(SceSize args, void *argp){
-	return SCE_KERNEL_STOP_CANCEL;
+	// dmass_create_process_resource(SCE_GUID_KERNEL_PROCESS_ID);
+
+	SceUID fd;
+
+	fd = ksceIoOpen("vsd0:file.bin", SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0666);
+	ksceIoWrite(fd, &vfs_add, sizeof(vfs_add));
+	ksceIoClose(fd);
+
+
+
+	return SCE_KERNEL_START_SUCCESS;
 }
