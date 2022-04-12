@@ -8,7 +8,7 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   endif()
 endif()
 
-project(SceVfsMountPoC)
+project(SceVfsMountPoC_old)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,-q -Wall -O3 -fno-inline")
@@ -20,7 +20,7 @@ endif()
 
 enable_language(C ASM)
 
-add_executable(SceVfsMountPoC
+add_executable(SceVfsMountPoC_old
   src/main.c
   src/cpu.S
   src/sce_cpu.c
@@ -32,7 +32,7 @@ add_executable(SceVfsMountPoC
   src/map_conf1.c
 )
 
-target_link_libraries(SceVfsMountPoC
+target_link_libraries(SceVfsMountPoC_old
   SceCpuForDriver_stub
   SceDebugForDriver_stub
   SceIofilemgrForDriver_stub
@@ -45,11 +45,11 @@ target_link_libraries(SceVfsMountPoC
   taihenModuleUtils_stub
 )
 
-set_target_properties(SceVfsMountPoC
+set_target_properties(SceVfsMountPoC_old
   PROPERTIES LINK_FLAGS "-nostdlib"
 )
 
-vita_create_self(SceVfsMountPoC.skprx SceVfsMountPoC
+vita_create_self(SceVfsMountPoC.skprx SceVfsMountPoC_old
   CONFIG exports.yml
   UNSAFE
 )
