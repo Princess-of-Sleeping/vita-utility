@@ -24,6 +24,7 @@ target_link_libraries(idstorage_dumper
   SceSysclibForDriver_stub
   SceIdStorageForDriver_stub
   SceIofilemgrForDriver_stub
+  SceThreadmgrForDriver_stub
 )
 
 set_target_properties(idstorage_dumper

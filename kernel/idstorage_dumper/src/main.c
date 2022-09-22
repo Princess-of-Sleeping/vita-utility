@@ -4,6 +4,7 @@
  */
 
 #include <psp2kern/kernel/modulemgr.h>
+#include <psp2kern/kernel/threadmgr.h>
 #include <psp2kern/kernel/sysmem.h>
 #include <psp2kern/kernel/sysclib.h>
 #include <psp2kern/kernel/debug.h>
@@ -26,8 +27,8 @@ int write_file(const char *path, const void *data, SceSize size){
 	return 0;
 }
 
-void _start() __attribute__ ((weak, alias("module_start")));
-int module_start(SceSize args, void *argp){
+
+int dump_entry(SceSize args, void *argp){
 
 	char drv[8];
 	memset(drv, 0, sizeof(drv));
@@ -85,6 +86,18 @@ int module_start(SceSize args, void *argp){
 	}
 
 	ksceKernelFreeHeapMemory(0x1000B, leaf_buffer);
+	return 0;
+}
+
+void _start() __attribute__ ((weak, alias("module_start")));
+int module_start(SceSize args, void *argp){
+
+	SceUID thid;
+
+	thid = ksceKernelCreateThread("idstorage_dump_thread", dump_entry, 0x50, 0x1000, 0, 0, NULL);
+	ksceKernelStartThread(thid, 0, NULL);
+	ksceKernelWaitThreadEnd(thid, NULL, NULL);
+	ksceKernelDeleteThread(thid);
 
 	return SCE_KERNEL_START_NO_RESIDENT;
 }
