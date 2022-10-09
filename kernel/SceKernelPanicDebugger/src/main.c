@@ -24,6 +24,28 @@ const char * const cpu_reg_name[0x10] = {
 	"ip", "sp", "lr", "pc",
 };
 
+const char * const dbg_event_string_list[] = {
+	"Halt Request debug event",
+	"Breakpoint debug event",
+	"Asynchronous Watchpoint debug event",
+	"BKPT Instruction debug event",
+
+	"External Debug Request debug event",
+	"Vector Catch debug event",
+	"0x6",
+	"0x7",
+
+	"OS Unlock Catch debug event",
+	"0x9",
+	"Synchronous Watchpoint debug event",
+	"0xB",
+
+	"0xC",
+	"0xD",
+	"0xE",
+	"0xF"
+};
+
 int print_excp_info(const SceExcpmgrExceptionContext *context, SceUInt32 pc, SceUInt32 cpsr){
 
 	ksceDebugPrintf("\n**** Exception info ****\n\n");
@@ -65,6 +87,14 @@ int print_excp_info(const SceExcpmgrExceptionContext *context, SceUInt32 pc, Sce
 	ksceDebugPrintf("IFSR : 0x%08X\n", context->IFSR);
 	ksceDebugPrintf("DFAR : 0x%08X\n", context->DFAR);
 	ksceDebugPrintf("IFAR : 0x%08X\n", context->IFAR);
+
+	if((context->IFSR & 0x140F) == 2){
+		ksceDebugPrintf(
+			"DBGDSCR : 0x%08X [ %s ]\n",
+			context->DBGSCRext,
+			dbg_event_string_list[(context->DBGSCRext >> 2) & 0xF]
+		);
+	}
 
 /*
 	ksceDebugPrintf("PAR        0x%08X\n", context->PAR);
