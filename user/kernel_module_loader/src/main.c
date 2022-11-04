@@ -277,6 +277,9 @@ int module_start(SceSize args, void *argp){
 	if(module_num == 1){
 load_first_module:
 		pModuleLoadParam->modid = taiLoadStartKernelModule(pModuleLoadParam->path, 0, NULL, 0);
+		if(pModuleLoadParam->modid < 0){
+			sceClibPrintf("taiLoadStartKernelModule 0x%X for (%s)\n", pModuleLoadParam->modid, pModuleLoadParam->path);
+		}
 	}else{
 		int search_unk[2];
 		SceUID search_modid;
@@ -295,7 +298,12 @@ load_first_module:
 	}
 
 exit_app:
-	sceAppMgrDestroyAppByAppId(~2);
+	sceClibPrintf("All done. exiting...\n");
+	load_res = sceAppMgrDestroyAppByAppId(~2);
+	if(load_res < 0){
+		sceClibPrintf("sceAppMgrDestroyAppByAppId 0x%X\n", load_res);
+		sceKernelExitProcess(0);
+	}
 
 	return SCE_KERNEL_START_SUCCESS;
 }
