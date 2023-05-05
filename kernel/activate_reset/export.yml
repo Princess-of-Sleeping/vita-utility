@@ -1,0 +1,7 @@
+activate_reset:
+  attributes: 6
+  version:
+    major: 1
+    minor: 1
+  main:
+    start: module_start
