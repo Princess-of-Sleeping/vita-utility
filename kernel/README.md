@@ -15,12 +15,6 @@ HDMI disconnection -> screen on
 
 Sample of how to map vaddr from paddr
 
-# SceDeci4pRDrfpUnlimited
-
-Unlimited SceDeci4pRDrfp io file control patch.
-
-For example, Can access to vs0: from host psp2ctrl commands.
-
 # SceErrorHelper
 
 Popup error dialog strings code to hex.

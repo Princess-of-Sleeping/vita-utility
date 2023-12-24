@@ -1,7 +1,0 @@
-SceDeci4pRDrfpUnlimited:
-  attributes: 7
-  version:
-    major: 0x1
-    minor: 0x1
-  main:
-    start: module_start
