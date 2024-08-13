@@ -5,3 +5,8 @@ SceHwbkptTest:
     minor: 0x1
   main:
     start: module_start
+  libraries:
+    LibWtpt:
+      syscall: true
+      functions:
+        - sceKernelSetPHWPForUser

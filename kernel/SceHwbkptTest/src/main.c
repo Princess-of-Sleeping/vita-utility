@@ -10,8 +10,8 @@
 #include <psp2kern/kernel/sysroot.h>
 #include <psp2kern/kernel/debug.h>
 #include <psp2kern/kernel/dipsw.h>
-#include <psp2kern/sblaimgr.h>
-#include <psp2kern/syscon.h>
+#include <psp2kern/kernel/aimgr.h>
+#include <psp2kern/kernel/syscon.h>
 #include <taihen.h>
 
 #define HookImport(module_name, library_nid, func_nid, func_name) \
@@ -53,11 +53,47 @@ typedef enum SceProcessHwwhptSlot {
 	SCE_PROCESS_HW_WHPT_SLOT3 = 3
 } SceProcessHwwhptSlot;
 
+
+int sceKernelSetPHWPForUser(SceUInt32 a2, void *WVR, SceUInt32 WCR){
+
+	int res;
+	SceUInt32 state;
+
+	ENTER_SYSCALL(state);
+	res = sceKernelSetPHWP(ksceKernelGetProcessId(), a2, WVR, WCR);
+	EXIT_SYSCALL(state);
+
+	return res;
+}
+
 int proc_create(SceUID pid, SceProcEventInvokeParam2 *a2, int a3){
 
 	char titleid[0x20];
 
 	ksceKernelSysrootGetProcessTitleId(pid, titleid, sizeof(titleid));
+
+	ksceKernelPrintf("titleid=%s\n", titleid);
+
+	if(0 == strcmp(titleid, "AAAA00001") && 0){
+
+		SceUInt32 WCR = 0;
+
+		WCR |= (1      & 1);            // BE:break point enable
+		WCR |= (0b10   & 0b11)   << 1;  // Any world (user, privileged, svc)
+		WCR |= (0b10   & 0b11)   << 3;  // Trigger : load, store, load and store
+		WCR |= (0b1 & 0b11111111) << 5;  // Byte address select (i think byte mask?)
+		WCR |= (0b01   & 0b11)   << 14; // Secure state access control
+		WCR |= (0b0 & 0b1) << 20; // WT
+		WCR |= (0b0 & 0b11111) << 24; // MASK
+
+		// sceKernelSetPHWP(pid, 0, (void *)0x817814c0, WCR);
+		// sceKernelSetPHWP(pid, 1, (void *)0x81681500, WCR);
+		// sceKernelSetPHWP(pid, 2, (void *)0x81781500, WCR);
+		sceKernelSetPHWP(pid, 3, (void *)0x81681560, WCR);
+/*
+0x816814c0
+*/
+	}
 
 	if(0 == strcmp(titleid, "NPXS10015")){
 
@@ -87,7 +123,7 @@ int proc_create(SceUID pid, SceProcEventInvokeParam2 *a2, int a3){
 
 			// set settings_type
 			bkpt_address = module_info.segments[1].vaddr + 0x3C;
-			sceKernelSetPHWP(pid, 3, bkpt_address, WCR);
+			sceKernelSetPHWP(pid, 3, 0x816814a0, WCR);
 		}else{
 			SceUInt32 BCR = 0;
 
